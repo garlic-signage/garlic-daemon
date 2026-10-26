@@ -67,8 +67,7 @@ void Daemon::startMessageListener()
 {
     while (is_running.load())
     {
-    std:
-        string message;
+        std::string message;
         MyIPCMessageReceiver->waitForMessage(message);
         std::cout << "Received message from queue: " << message << std::endl;
         MyMessageDispatcher->dispatch(message);

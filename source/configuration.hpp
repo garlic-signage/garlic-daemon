@@ -26,12 +26,12 @@ class Configuration
 {
     public:
         Configuration();
-        void readLibConfigValues(libconfig::Config *config);
+        void readLibConfigValues(const libconfig::Config *config);
 
-        std::string getAppName() const;
-        std::string getPlayerName() const;
-        std::string getPlayerPath() const;
-        std::string getPlayerUser() const;
+        [[nodiscard]] std::string getAppName() const;
+        [[nodiscard]] std::string getPlayerName() const;
+        [[nodiscard]] std::string getPlayerPath() const;
+        [[nodiscard]] std::string getPlayerUser() const;
 
     private:
         const std::string APP_NAME    = "garlic-daemon";

@@ -18,9 +18,9 @@
 
 #include "configuration.hpp"
 
-Configuration::Configuration() {}
+Configuration::Configuration() = default;
 
-void Configuration::readLibConfigValues(libconfig::Config *config)
+void Configuration::readLibConfigValues(const libconfig::Config *config)
 {
     try
     {

@@ -20,11 +20,9 @@
 #define IPCMESSAGERECEIVER_HPP
 
 #include <mqueue.h>
-#include <signal.h>
 #include <atomic>
 #include <thread>
 #include <iostream>
-#include <cstring>
 #include <queue>
 #include <mutex>
 #include <condition_variable>
@@ -63,7 +61,7 @@ class IPCMessageReceiver
 
     private:
         const std::string TERMINATION_MESSAGE = "TERMINATE\0";
-        std::string message_queue_name        = "";
+        std::string message_queue_name;
         mqd_t mq;
         std::thread::id receiver_thread_id;
         std::atomic<bool> running;

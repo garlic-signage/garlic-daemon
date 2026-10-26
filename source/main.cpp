@@ -39,8 +39,7 @@ int main(int argc, char **argv)
 #ifdef NDEBUG
     if (std::filesystem::exists(lockfile_name))
     {
-    std:
-        cerr << ("Application is already running!") << std::endl;
+        std::cerr << ("Application is already running!") << std::endl;
         return 1;
     }
     else

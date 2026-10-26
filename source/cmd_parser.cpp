@@ -18,11 +18,11 @@
 
 #include "cmd_parser.hpp"
 
-CmdParser::CmdParser(int argc, char **argv)
+CmdParser::CmdParser(const int argc, char **argv)
 {
     for (int i = 1; i < argc; i++)
     {
-        this->m_tokens.push_back(std::string(argv[i]));
+        this->m_tokens.emplace_back(argv[i]);
     }
 }
 
@@ -44,7 +44,7 @@ std::string CmdParser::getConfigFilePath()
 
 const std::string &CmdParser::getCmdOptionValue(const std::string &option) const
 {
-    auto it = std::find(this->m_tokens.begin(), this->m_tokens.end(), option);
+    auto it = std::ranges::find(this->m_tokens, option);
     if (it != this->m_tokens.end() && ++it != this->m_tokens.end())
     {
         return *it;
@@ -55,6 +55,6 @@ const std::string &CmdParser::getCmdOptionValue(const std::string &option) const
 
 bool CmdParser::cmdOptionExist(const std::string &option) const
 {
-    auto it = std::find(this->m_tokens.begin(), this->m_tokens.end(), option);
+    const auto it = std::ranges::find(this->m_tokens, option);
     return (it != this->m_tokens.end());
 }

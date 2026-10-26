@@ -23,7 +23,6 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
-#include <type_traits>
 
 #define LOG_INFO(...) Log(std::clog, "INFO").write(__VA_ARGS__)
 #define LOG_WARNING(...) Log(std::clog, "WARNING", __FUNCTION__, __LINE__).write(__VA_ARGS__)
@@ -71,7 +70,7 @@ struct Log
 
         template <typename TF> void write(TF const &f) { writeLog(out, f); }
 
-        void write() {} // Handle the empty params case
+        static void write() {} // Handle the empty params case
 };
 
-#endif // LOG_HPP_
+#endif // LOG_HPP

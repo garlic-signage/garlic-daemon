@@ -19,10 +19,7 @@
 #ifndef DAEMON_HPP
 #define DAEMON_HPP
 
-#include <csignal>
 #include <atomic>
-
-#include "log.hpp"
 #include "watchdog.hpp"
 #include "ipc_message_receiver.hpp"
 #include "message_dispatcher.hpp"
@@ -36,6 +33,8 @@ class Daemon
         void setIPC(IPCMessageReceiver *ipc);
         void setMessageDispatcher(MessageDispatcher *dispatcher);
         void startMessageListener();
+        Daemon(Daemon const &)         = delete;
+        void operator=(Daemon const &) = delete;
 
     private:
         const int WATCHDOG_TIMER = 5;
@@ -47,8 +46,6 @@ class Daemon
         std::condition_variable cv;
 
         Daemon();
-        Daemon(Daemon const &)         = delete;
-        void operator=(Daemon const &) = delete;
         void reload();
 
         static void signalHandler(int signal);

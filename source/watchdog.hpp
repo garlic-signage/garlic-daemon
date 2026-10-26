@@ -40,7 +40,7 @@ class Watchdog
 {
     public:
         /// proc_path can be replaced by a fake directory in tests.
-        explicit Watchdog(const string &proc_path = "/proc");
+        explicit Watchdog(string proc_path = "/proc");
         bool isPlayerRunning();
         bool isReboot();
         void setActivity(bool is_active);
@@ -53,8 +53,8 @@ class Watchdog
         string player_name               = "garlic-player";
         string path_to_player_executable = "/opt/garlic-player/garlic.sh";
         int getPlayerProcId();
-        bool isInCmdLine(string dir_name);
-        bool isZombie(int pid);
+        bool isInCmdLine(const string& dir_name) const;
+        bool isZombie(int pid) const;
         bool is_active = true;
 };
 

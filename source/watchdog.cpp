@@ -18,7 +18,9 @@
 
 #include "watchdog.hpp"
 
-Watchdog::Watchdog(const string &proc_path) : proc_path(proc_path) {}
+#include <utility>
+
+Watchdog::Watchdog(string proc_path) : proc_path(std::move(proc_path)) {}
 
 void Watchdog::setActivity(bool is_active)
 {
@@ -51,7 +53,7 @@ int Watchdog::getPlayerProcId()
     int pid = -1;
 
     DIR *dp = opendir(proc_path.c_str());
-    if (dp == NULL)
+    if (dp == nullptr)
         return pid;
 
     struct dirent *dirp;
@@ -70,7 +72,7 @@ int Watchdog::getPlayerProcId()
     return pid;
 }
 
-bool Watchdog::isInCmdLine(string dir_name)
+bool Watchdog::isInCmdLine(const string& dir_name) const
 {
     // Read contents of virtual /proc/{pid}/cmdline file
     string cmdPath = proc_path + "/" + dir_name + "/cmdline";
@@ -96,11 +98,11 @@ bool Watchdog::isInCmdLine(string dir_name)
     return false;
 }
 
-bool Watchdog::isZombie(int pid)
+bool Watchdog::isZombie(const int pid) const
 {
     bool is_zombie = false;
 
-    string stat_path = proc_path + "/" + to_string(pid) + "/stat";
+    const string stat_path = proc_path + "/" + to_string(pid) + "/stat";
 
     FILE *fpstat = fopen(stat_path.c_str(), "r");
     if (!fpstat)

@@ -19,9 +19,6 @@
 #ifndef CMD_PARSER_HPP
 #define CMD_PARSER_HPP
 
-#include <algorithm>
-#include <functional>
-#include <optional>
 #include <string>
 #include <vector>
 #include "log.hpp"
@@ -36,8 +33,8 @@ class CmdParser
     private:
         std::string configFileName;
         std::vector<std::string> m_tokens;
-        const std::string &getCmdOptionValue(const std::string &option) const;
-        bool cmdOptionExist(const std::string &option) const;
+        [[nodiscard]] const std::string &getCmdOptionValue(const std::string &option) const;
+        [[nodiscard]] bool cmdOptionExist(const std::string &option) const;
 };
 
-#endif // COMMAND_LINE_PARSER_HPP
+#endif // CMD_PARSER_HPP

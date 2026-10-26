@@ -31,7 +31,7 @@ class MessageDispatcher
 
     public:
         explicit MessageDispatcher(SystemActions &system_actions);
-        void dispatch(std::string message);
+        void dispatch(const std::string& message);
 
     private:
         const std::string REBOOT      = "reboot";
@@ -40,7 +40,7 @@ class MessageDispatcher
 
         SystemActions &MySystemActions;
 
-        void installApp();
+        static void installApp();
         void removeApp();
 };
 
