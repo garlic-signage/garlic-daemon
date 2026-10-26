@@ -56,7 +56,7 @@ class Configuration
         const int HEARTBEAT_TIMEOUT         = 0; // disabled
         const int REBOOT_AFTER_CRASHES      = 7; // when the backoff has reached its maximum, 0 = never
         const std::string USB_MOUNT_DIR     = "/media/garlic";
-        const std::string USB_FIRMWARE_FILE = "garlic-player.zip";
+        const std::string USB_FIRMWARE_FILE = "garlic-player.AppImage";
 
         std::string app_name       = APP_NAME;
         std::string socket_path    = SOCKET_PATH;

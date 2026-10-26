@@ -70,16 +70,16 @@ TEST_F(UsbContentHandlerTest, ConfigXmlIsApplied)
 
 TEST_F(UsbContentHandlerTest, FirmwareUpdatesPlayer)
 {
-    addFile("garlic-player.zip");
+    addFile("garlic-player.AppImage");
 
     handle();
 
-    EXPECT_EQ(actions.calls, std::vector<std::string>{"updatePlayer " + (stick / "garlic-player.zip").string()});
+    EXPECT_EQ(actions.calls, std::vector<std::string>{"updatePlayer " + (stick / "garlic-player.AppImage").string()});
 }
 
 TEST_F(UsbContentHandlerTest, FirmwareFileNameFromConfiguration)
 {
-    addFile("garlic-player.zip"); // default name, ignored
+    addFile("garlic-player.AppImage"); // default name, ignored
     addFile("firmware-2.0.tar.gz");
     libconfig::Config config;
     config.readString("Usb = { firmware_file = \"firmware-2.0.tar.gz\"; };");
@@ -112,13 +112,13 @@ TEST_F(UsbContentHandlerTest, IndexSmilInRootIsIgnored)
 TEST_F(UsbContentHandlerTest, AllFilesInFixedOrder)
 {
     addFile("SMIL/index.smil");
-    addFile("garlic-player.zip");
+    addFile("garlic-player.AppImage");
     addFile("config.xml");
 
     handle();
 
     EXPECT_EQ(actions.calls, (std::vector<std::string>{"applyConfig " + (stick / "config.xml").string(),
-                                                       "updatePlayer " + (stick / "garlic-player.zip").string(),
+                                                       "updatePlayer " + (stick / "garlic-player.AppImage").string(),
                                                        "playSmil " + (stick / "SMIL/index.smil").string()}));
 }
 

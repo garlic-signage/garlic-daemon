@@ -51,7 +51,7 @@ TEST(Configuration, DefaultValues)
     EXPECT_EQ(configuration.getSocketPath(), "/run/garlic-daemon/garlic-daemon.sock");
     EXPECT_EQ(configuration.getStateDir(), "/var/lib/garlic-daemon");
     EXPECT_EQ(configuration.getUsbMountDir(), "/media/garlic");
-    EXPECT_EQ(configuration.getUsbFirmwareFile(), "garlic-player.zip");
+    EXPECT_EQ(configuration.getUsbFirmwareFile(), "garlic-player.AppImage");
     expectPlayerDefaults(configuration);
 }
 
@@ -123,5 +123,5 @@ TEST(Configuration, ShippedConfigFileIsValid)
     EXPECT_EQ(configuration.getRebootAfterCrashes(), 7);
     EXPECT_EQ(configuration.getStateDir(), "/var/lib/garlic-daemon");
     EXPECT_EQ(configuration.getUsbMountDir(), "/media/garlic");
-    EXPECT_EQ(configuration.getUsbFirmwareFile(), "garlic-player.zip");
+    EXPECT_EQ(configuration.getUsbFirmwareFile(), "garlic-player.AppImage");
 }

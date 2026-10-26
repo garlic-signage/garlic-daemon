@@ -100,7 +100,7 @@ in this order, so one stick can set up a device completely:
 | Order | File | Action |
 |---|---|---|
 | 1 | `config.xml` | the daemon applies the WiFi settings, the rest (player name, content url ...) goes to the player |
-| 2 | `garlic-player.zip` (name from `Usb.firmware_file`) | updates the player |
+| 2 | `garlic-player.AppImage` (name from `Usb.firmware_file`) | updates the player |
 | 3 | `SMIL/index.smil` | passes the SMIL index to the player (same layout as for the Android garlic-launcher) |
 
 The actions are **stubs** so far (`src/usb_actions.cpp`), they only write a log message.
@@ -179,7 +179,7 @@ An invalid file ends the daemon with an error message.
 | `socket` | `"/run/garlic-daemon/garlic-daemon.sock"` | Unix socket for the player, see [docs/player-api.md](docs/player-api.md) |
 | `state_dir` | `"/var/lib/garlic-daemon"` | directory for files that must survive a reboot |
 | `Usb.mount_dir` | `"/media/garlic"` | USB sticks are mounted to `<mount_dir>/<device>` |
-| `Usb.firmware_file` | `"garlic-player.zip"` | file name of a player update on the stick |
+| `Usb.firmware_file` | `"garlic-player.AppImage"` | file name of a player update on the stick |
 | `Player.name` | `"garlic-player"` | name in log messages |
 | `Player.command` | `"/opt/garlic-player/garlic.sh"` | start command, run with `/bin/sh -c` |
 | `Player.user` | `"digitalsignage"` | user the player runs as |
