@@ -17,104 +17,199 @@
 *************************************************************************************/
 
 #include <gtest/gtest.h>
+#include <chrono>
+#include <csignal>
 #include <filesystem>
 #include <fstream>
+#include <thread>
 #include "watchdog.hpp"
 
 namespace fs = std::filesystem;
-using namespace std::string_literals; // "..."s keeps embedded '\0'
+using namespace std::chrono_literals;
 
-// Every test gets its own empty fake /proc directory, which is removed afterwards.
+// The tests start real processes like "sleep 30" instead of the player.
+// They run as normal user, so the player is started as the same user.
 class WatchdogTest : public ::testing::Test
 {
     protected:
-        fs::path proc_dir;
+        fs::path tmp_dir;
 
         void SetUp() override
         {
-            char dir_template[] = "/tmp/garlic-test-proc-XXXXXX";
-            proc_dir            = mkdtemp(dir_template);
+            char dir_template[] = "/tmp/garlic-test-watchdog-XXXXXX";
+            tmp_dir             = mkdtemp(dir_template);
         }
 
-        void TearDown() override { fs::remove_all(proc_dir); }
+        void TearDown() override { fs::remove_all(tmp_dir); }
 
-        // Creates <proc_dir>/<entry>/cmdline. Like in the real /proc,
-        // arguments in cmdline are separated by '\0'.
-        void addProcess(const std::string &entry, const std::string &cmdline)
+        // Creates a Configuration with the given Player settings in libconfig syntax
+        static Configuration makeConfiguration(const std::string &player_settings)
         {
-            fs::create_directory(proc_dir / entry);
-            std::ofstream(proc_dir / entry / "cmdline") << cmdline;
+            libconfig::Config config;
+            config.readString("Player = { " + player_settings + " };");
+            Configuration configuration;
+            configuration.readLibConfigValues(&config);
+            return configuration;
+        }
+
+        // true if a process with this pid exists
+        static bool processExists(pid_t pid) { return kill(pid, 0) == 0; }
+
+        // Reads a file written by the test command, waits at most 2 seconds for it
+        static std::string readFileWithTimeout(const fs::path &file)
+        {
+            auto deadline = std::chrono::steady_clock::now() + 2s;
+            std::string content;
+            while (content.empty() && std::chrono::steady_clock::now() < deadline)
+            {
+                std::this_thread::sleep_for(10ms);
+                std::ifstream(file) >> content;
+            }
+            return content;
         }
 };
 
-TEST_F(WatchdogTest, EmptyProcMeansNotRunning)
+TEST_F(WatchdogTest, CheckStartsPlayer)
 {
-    Watchdog watchdog(Configuration(), proc_dir);
-
+    Watchdog watchdog(makeConfiguration("command = \"sleep 30\";"));
     EXPECT_FALSE(watchdog.isPlayerRunning());
-}
 
-TEST_F(WatchdogTest, MissingProcMeansNotRunning)
-{
-    Watchdog watchdog(Configuration(), proc_dir / "does-not-exist");
-
-    EXPECT_FALSE(watchdog.isPlayerRunning());
-}
-
-TEST_F(WatchdogTest, FindsPlayerWithPathAndArguments)
-{
-    addProcess("1", "/sbin/init\0"s);
-    addProcess("42", "/opt/garlic-player/garlic-player\0--fullscreen\0"s);
-    Watchdog watchdog(Configuration(), proc_dir);
+    watchdog.check();
 
     EXPECT_TRUE(watchdog.isPlayerRunning());
+    EXPECT_TRUE(processExists(watchdog.getPlayerPid()));
 }
 
-TEST_F(WatchdogTest, FindsPlayerWithoutPath)
+TEST_F(WatchdogTest, CheckDoesNotStartSecondPlayer)
 {
-    addProcess("42", "garlic-player");
-    Watchdog watchdog(Configuration(), proc_dir);
+    Watchdog watchdog(makeConfiguration("command = \"sleep 30\";"));
+    watchdog.check();
+    pid_t pid = watchdog.getPlayerPid();
+
+    watchdog.check();
+
+    EXPECT_EQ(watchdog.getPlayerPid(), pid);
+}
+
+TEST_F(WatchdogTest, CrashedPlayerIsRestarted)
+{
+    Watchdog watchdog(makeConfiguration("command = \"sleep 30\";"));
+    watchdog.check();
+    pid_t first_pid = watchdog.getPlayerPid();
+
+    kill(first_pid, SIGKILL); // simulates a crash
+    std::this_thread::sleep_for(100ms);
+    EXPECT_FALSE(watchdog.isPlayerRunning());
+
+    watchdog.check();
 
     EXPECT_TRUE(watchdog.isPlayerRunning());
+    EXPECT_NE(watchdog.getPlayerPid(), first_pid);
 }
 
-TEST_F(WatchdogTest, OtherProcessesAreIgnored)
+TEST_F(WatchdogTest, HangingPlayerIsRestarted)
 {
-    addProcess("1", "/sbin/init");
-    addProcess("2", "/usr/bin/garlic-player-helper"); // only the exact name counts
-    addProcess("3", "");                              // kernel threads have an empty cmdline
-    Watchdog watchdog(Configuration(), proc_dir);
+    Watchdog watchdog(makeConfiguration("command = \"sleep 30\"; heartbeat_timeout = 1;"));
+    watchdog.check();
+    pid_t first_pid = watchdog.getPlayerPid();
 
-    EXPECT_FALSE(watchdog.isPlayerRunning());
-}
+    std::this_thread::sleep_for(1200ms); // no heartbeat
+    watchdog.check();
 
-TEST_F(WatchdogTest, NonNumericEntriesAreIgnored)
-{
-    addProcess("self", "/opt/garlic-player/garlic-player");
-    Watchdog watchdog(Configuration(), proc_dir);
-
-    EXPECT_FALSE(watchdog.isPlayerRunning());
-}
-
-TEST_F(WatchdogTest, PlayerNameIsTakenFromConfiguration)
-{
-    libconfig::Config config;
-    config.readString("Player = { name = \"my-player\"; };");
-    Configuration configuration;
-    configuration.readLibConfigValues(&config);
-
-    addProcess("42", "/opt/garlic-player/garlic-player");
-    Watchdog watchdog(configuration, proc_dir);
-    EXPECT_FALSE(watchdog.isPlayerRunning());
-
-    addProcess("43", "/usr/bin/my-player");
     EXPECT_TRUE(watchdog.isPlayerRunning());
+    EXPECT_NE(watchdog.getPlayerPid(), first_pid);
+    EXPECT_FALSE(processExists(first_pid));
 }
 
-TEST_F(WatchdogTest, InactiveWatchdogAlwaysReportsRunning)
+TEST_F(WatchdogTest, HeartbeatKeepsPlayerRunning)
 {
-    Watchdog watchdog(Configuration(), proc_dir);
+    Watchdog watchdog(makeConfiguration("command = \"sleep 30\"; heartbeat_timeout = 1;"));
+    watchdog.check();
+    pid_t pid = watchdog.getPlayerPid();
+
+    for (int i = 0; i < 3; i++) // 1.5 seconds in total, longer than the timeout
+    {
+        std::this_thread::sleep_for(500ms);
+        watchdog.heartbeat();
+        watchdog.check();
+    }
+
+    EXPECT_EQ(watchdog.getPlayerPid(), pid);
+}
+
+TEST_F(WatchdogTest, NoHeartbeatTimeoutMeansNoHangDetection)
+{
+    Watchdog watchdog(makeConfiguration("command = \"sleep 30\"; heartbeat_timeout = 0;"));
+    watchdog.check();
+    pid_t pid = watchdog.getPlayerPid();
+
+    std::this_thread::sleep_for(1200ms);
+    watchdog.check();
+
+    EXPECT_EQ(watchdog.getPlayerPid(), pid);
+}
+
+TEST_F(WatchdogTest, InactiveWatchdogDoesNotStartPlayer)
+{
+    Watchdog watchdog(makeConfiguration("command = \"sleep 30\";"));
     watchdog.setActivity(false);
 
-    EXPECT_TRUE(watchdog.isPlayerRunning());
+    watchdog.check();
+
+    EXPECT_FALSE(watchdog.isPlayerRunning());
+}
+
+TEST_F(WatchdogTest, StopPlayerStopsAllProcessesOfStartScript)
+{
+    // Like a start script: starts a child process and waits for it
+    fs::path pid_file = tmp_dir / "child.pid";
+    Watchdog watchdog(makeConfiguration("command = \"sleep 30 & echo $! > " + pid_file.string() + "; wait\";"));
+    watchdog.check();
+    pid_t child_pid = std::stoi(readFileWithTimeout(pid_file));
+    ASSERT_TRUE(processExists(child_pid));
+
+    watchdog.stopPlayer();
+
+    EXPECT_FALSE(watchdog.isPlayerRunning());
+    std::this_thread::sleep_for(100ms); // the child is reaped by init
+    EXPECT_FALSE(processExists(child_pid));
+}
+
+TEST_F(WatchdogTest, PlayerIgnoringSigtermIsKilled)
+{
+    // Takes STOP_TIMEOUT (5 seconds), because the watchdog waits before it sends SIGKILL
+    fs::path ready_file = tmp_dir / "ready";
+    Watchdog watchdog(
+        makeConfiguration("command = \"trap '' TERM; echo ready > " + ready_file.string() + "; sleep 30\";"));
+    watchdog.check();
+    pid_t pid = watchdog.getPlayerPid();
+    ASSERT_EQ(readFileWithTimeout(ready_file), "ready"); // SIGTERM is ignored from now on
+
+    auto begin = std::chrono::steady_clock::now();
+    watchdog.stopPlayer();
+
+    EXPECT_FALSE(processExists(pid));
+    EXPECT_GE(std::chrono::steady_clock::now() - begin, 5s); // SIGTERM had no effect, SIGKILL was needed
+}
+
+TEST_F(WatchdogTest, DestructorStopsPlayer)
+{
+    pid_t pid = -1;
+    {
+        Watchdog watchdog(makeConfiguration("command = \"sleep 30\";"));
+        watchdog.check();
+        pid = watchdog.getPlayerPid();
+    }
+
+    EXPECT_FALSE(processExists(pid));
+}
+
+TEST_F(WatchdogTest, EnvironmentFromConfigurationIsPassed)
+{
+    fs::path out_file = tmp_dir / "env.txt";
+    Watchdog watchdog(makeConfiguration("command = \"echo $GARLIC_TEST > " + out_file.string() +
+                                        "\"; environment = [\"GARLIC_TEST=hello\"];"));
+    watchdog.check();
+
+    EXPECT_EQ(readFileWithTimeout(out_file), "hello");
 }

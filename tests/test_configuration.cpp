@@ -21,63 +21,72 @@
 
 // The config content is read from a string, so no files are needed.
 
+namespace
+{
+Configuration readConfiguration(const std::string &content)
+{
+    libconfig::Config config;
+    config.readString(content);
+    Configuration configuration;
+    configuration.readLibConfigValues(&config);
+    return configuration;
+}
+
+void expectPlayerDefaults(const Configuration &configuration)
+{
+    EXPECT_EQ(configuration.getPlayerName(), "garlic-player");
+    EXPECT_EQ(configuration.getPlayerCommand(), "/opt/garlic-player/garlic.sh");
+    EXPECT_EQ(configuration.getPlayerUser(), "digitalsignage");
+    EXPECT_TRUE(configuration.getPlayerEnvironment().empty());
+    EXPECT_EQ(configuration.getHeartbeatTimeout(), 0);
+}
+} // namespace
+
 TEST(Configuration, DefaultValues)
 {
     Configuration configuration;
 
     EXPECT_EQ(configuration.getAppName(), "garlic-daemon");
     EXPECT_EQ(configuration.getMessageQueue(), "/garlic-daemon");
-    EXPECT_EQ(configuration.getPlayerName(), "garlic-player");
-    EXPECT_EQ(configuration.getPlayerPath(), "/usr/local/bin/");
-    EXPECT_EQ(configuration.getPlayerUser(), "digitalsignage");
+    expectPlayerDefaults(configuration);
 }
 
 TEST(Configuration, ReadsAllValues)
 {
-    libconfig::Config config;
-    config.readString("app_name = \"my-daemon\";"
-                      "message_queue = \"/my-queue\";"
-                      "Player = {"
-                      "  name = \"my-player\";"
-                      "  path = \"/opt/player/\";"
-                      "  user = \"tester\";"
-                      "};");
-
-    Configuration configuration;
-    configuration.readLibConfigValues(&config);
+    Configuration configuration = readConfiguration("app_name = \"my-daemon\";"
+                                                    "message_queue = \"/my-queue\";"
+                                                    "Player = {"
+                                                    "  name = \"my-player\";"
+                                                    "  command = \"/opt/player/start.sh --fullscreen\";"
+                                                    "  user = \"tester\";"
+                                                    "  environment = [\"DISPLAY=:0\", \"LANG=de_DE.UTF-8\"];"
+                                                    "  heartbeat_timeout = 60;"
+                                                    "};");
 
     EXPECT_EQ(configuration.getAppName(), "my-daemon");
     EXPECT_EQ(configuration.getMessageQueue(), "/my-queue");
     EXPECT_EQ(configuration.getPlayerName(), "my-player");
-    EXPECT_EQ(configuration.getPlayerPath(), "/opt/player/");
+    EXPECT_EQ(configuration.getPlayerCommand(), "/opt/player/start.sh --fullscreen");
     EXPECT_EQ(configuration.getPlayerUser(), "tester");
+    EXPECT_EQ(configuration.getPlayerEnvironment(), (std::vector<std::string>{"DISPLAY=:0", "LANG=de_DE.UTF-8"}));
+    EXPECT_EQ(configuration.getHeartbeatTimeout(), 60);
 }
 
 TEST(Configuration, MissingPlayerGroupKeepsPlayerDefaults)
 {
-    libconfig::Config config;
-    config.readString("app_name = \"my-daemon\";");
-
-    Configuration configuration;
-    configuration.readLibConfigValues(&config);
+    Configuration configuration = readConfiguration("app_name = \"my-daemon\";");
 
     EXPECT_EQ(configuration.getAppName(), "my-daemon");
-    EXPECT_EQ(configuration.getPlayerName(), "garlic-player");
-    EXPECT_EQ(configuration.getPlayerPath(), "/usr/local/bin/");
-    EXPECT_EQ(configuration.getPlayerUser(), "digitalsignage");
+    expectPlayerDefaults(configuration);
 }
 
 TEST(Configuration, MissingSingleValueKeepsDefault)
 {
-    libconfig::Config config;
-    config.readString("Player = { name = \"my-player\"; };");
-
-    Configuration configuration;
-    configuration.readLibConfigValues(&config);
+    Configuration configuration = readConfiguration("Player = { name = \"my-player\"; };");
 
     EXPECT_EQ(configuration.getAppName(), "garlic-daemon");
     EXPECT_EQ(configuration.getPlayerName(), "my-player");
-    EXPECT_EQ(configuration.getPlayerPath(), "/usr/local/bin/");
+    EXPECT_EQ(configuration.getPlayerCommand(), "/opt/garlic-player/garlic.sh");
     EXPECT_EQ(configuration.getPlayerUser(), "digitalsignage");
 }
 
@@ -93,6 +102,8 @@ TEST(Configuration, ShippedConfigFileIsValid)
     EXPECT_EQ(configuration.getAppName(), "garlic-daemon");
     EXPECT_EQ(configuration.getMessageQueue(), "/garlic-daemon");
     EXPECT_EQ(configuration.getPlayerName(), "garlic-player");
-    EXPECT_EQ(configuration.getPlayerPath(), "/usr/local/bin/");
+    EXPECT_EQ(configuration.getPlayerCommand(), "/opt/garlic-player/garlic.sh");
     EXPECT_EQ(configuration.getPlayerUser(), "digitalsignage");
+    EXPECT_EQ(configuration.getPlayerEnvironment(), (std::vector<std::string>{"DISPLAY=:0"}));
+    EXPECT_EQ(configuration.getHeartbeatTimeout(), 0);
 }

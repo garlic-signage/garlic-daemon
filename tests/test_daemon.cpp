@@ -32,10 +32,13 @@ class DaemonTest : public ::testing::Test
 {
     protected:
         FakeSystemActions system_actions;
-        MessageDispatcher dispatcher{system_actions};
         Configuration configuration;
         Watchdog watchdog{configuration};
+        MessageDispatcher dispatcher{system_actions, watchdog};
         IPCMessageReceiver receiver{uniqueQueueName()};
+
+        // The watchdog would try to start the real player, these tests are about the messages
+        DaemonTest() { watchdog.setActivity(false); }
 
         static std::string uniqueQueueName()
         {

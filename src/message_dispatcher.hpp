@@ -22,6 +22,7 @@
 #include <string>
 #include <iostream>
 #include "system_actions.hpp"
+#include "watchdog.hpp"
 
 /**
  * Maps a received message (e.g. "reboot") to the matching action.
@@ -30,15 +31,17 @@ class MessageDispatcher
 {
 
     public:
-        explicit MessageDispatcher(SystemActions &system_actions);
+        MessageDispatcher(SystemActions &system_actions, Watchdog &watchdog);
         void dispatch(const std::string &message);
 
     private:
+        const std::string HEARTBEAT   = "heartbeat";
         const std::string REBOOT      = "reboot";
         const std::string INSTALL_APP = "install_app";
         const std::string REMOVE_APP  = "remove_app";
 
         SystemActions &MySystemActions;
+        Watchdog &watchdog;
 
         static void installApp();
         void removeApp();

@@ -5,10 +5,22 @@ Linux daemon for the [garlic-player](https://github.com/sagiadinos/garlic-player
 The player runs as a normal user. The daemon runs as root and does the things
 the player is not allowed to do:
 
-- **Watchdog**: checks periodically whether the player process is running
+- **Watchdog**: starts the player and restarts it when it crashes or hangs
 - **System commands** from the player, e.g. reboot
 
-Planned: restart of a crashed or hanging player, player updates, mounting USB sticks.
+Planned: player updates, mounting USB sticks.
+
+## Watchdog
+
+The daemon starts the player itself with `/bin/sh -c <Player.command>` as `Player.user`.
+Do not start the player additionally via a desktop autostart.
+
+- The watchdog checks the player every 5 seconds and starts it again when it has ended.
+- Hang detection: the player sends the message `heartbeat` regularly. If no heartbeat arrives
+  for `Player.heartbeat_timeout` seconds, the player is stopped and started again.
+  `0` disables it (default, until the player sends heartbeats).
+- Stopping: SIGTERM to all processes of the player, after 5 seconds SIGKILL.
+- When the daemon stops, the player is stopped too.
 
 ## Requirements
 
@@ -58,6 +70,7 @@ The player sends commands as plain text to the POSIX message queue `/garlic-daem
 
 | Message       | Action                     |
 |---------------|----------------------------|
+| `heartbeat`   | player is alive, see Watchdog |
 | `reboot`      | syncs the disks and reboots |
 | `install_app` | not implemented yet        |
 | `remove_app`  | not implemented yet        |

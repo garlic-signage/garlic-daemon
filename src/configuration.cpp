@@ -41,11 +41,22 @@ void Configuration::readLibConfigValues(const libconfig::Config *config)
         if (player.exists("name"))
             player.lookupValue("name", player_name);
 
-        if (player.exists("path"))
-            player.lookupValue("path", player_path);
+        if (player.exists("command"))
+            player.lookupValue("command", player_command);
 
         if (player.exists("user"))
             player.lookupValue("user", player_user);
+
+        if (player.exists("heartbeat_timeout"))
+            player.lookupValue("heartbeat_timeout", heartbeat_timeout);
+
+        // List of "KEY=VALUE" strings, e.g. environment = ["DISPLAY=:0"];
+        if (player.exists("environment"))
+        {
+            const libconfig::Setting &environment = player["environment"];
+            for (int i = 0; i < environment.getLength(); i++)
+                player_environment.emplace_back(environment[i].c_str());
+        }
     }
     catch (const libconfig::ParseException &e)
     {
@@ -68,12 +79,22 @@ std::string Configuration::getPlayerName() const
     return player_name;
 }
 
-std::string Configuration::getPlayerPath() const
+std::string Configuration::getPlayerCommand() const
 {
-    return player_path;
+    return player_command;
 }
 
 std::string Configuration::getPlayerUser() const
 {
     return player_user;
+}
+
+std::vector<std::string> Configuration::getPlayerEnvironment() const
+{
+    return player_environment;
+}
+
+int Configuration::getHeartbeatTimeout() const
+{
+    return heartbeat_timeout;
 }

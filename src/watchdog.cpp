@@ -1,6 +1,6 @@
 /*************************************************************************************
     garlic-daemon: Linux daemon for garlic-player
-    Copyright (C) 2023 Nikolaos Saghiadinos <ns@smil-control.com>
+    Copyright (C) 2023 Nikolaos Sagiadinos <ns@smil-control.com>
     This file is part of the garlic-daemon source code
 
     This program is free software: you can redistribute it and/or modify
@@ -18,111 +18,228 @@
 
 #include "watchdog.hpp"
 
-#include <utility>
+#include <algorithm>
+#include <cerrno>
+#include <csignal>
+#include <cstring>
+#include <thread>
+#include <grp.h>
+#include <pwd.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include "log.hpp"
 
-Watchdog::Watchdog(const Configuration &configuration, string proc_path)
-    : proc_path(std::move(proc_path)), player_name(configuration.getPlayerName()),
-      path_to_player_executable(configuration.getPlayerPath() + configuration.getPlayerName())
+extern char **environ;
+
+Watchdog::Watchdog(const Configuration &configuration)
+    : player_name(configuration.getPlayerName()), player_command(configuration.getPlayerCommand()),
+      player_user(configuration.getPlayerUser()), player_environment(configuration.getPlayerEnvironment()),
+      heartbeat_timeout(configuration.getHeartbeatTimeout())
 {
 }
 
-void Watchdog::setActivity(bool is_active)
+Watchdog::~Watchdog()
 {
-    this->is_active = is_active;
+    stopPlayer();
 }
 
 void Watchdog::check()
 {
-    if (!isPlayerRunning())
+    std::lock_guard<std::mutex> lock(mtx);
+    if (!is_active)
+        return;
+
+    if (isRunning() && isHanging())
     {
-        std::cerr << player_name << " needs to be started" << std::endl;
+        LOG_WARNING(player_name, " sent no heartbeat for ", heartbeat_timeout.count(), " seconds, restart it.");
+        stop();
     }
+
+    if (!isRunning())
+        start();
 }
 
-void Watchdog::startPlayer()
+void Watchdog::heartbeat()
 {
-    std::system(path_to_player_executable.c_str());
+    std::lock_guard<std::mutex> lock(mtx);
+    last_heartbeat = std::chrono::steady_clock::now();
+}
+
+void Watchdog::setActivity(bool is_active)
+{
+    std::lock_guard<std::mutex> lock(mtx);
+    this->is_active = is_active;
+}
+
+void Watchdog::stopPlayer()
+{
+    std::lock_guard<std::mutex> lock(mtx);
+    stop();
 }
 
 bool Watchdog::isPlayerRunning()
 {
-    if (!is_active) // if watchdog is not active return always true
+    std::lock_guard<std::mutex> lock(mtx);
+    return isRunning();
+}
+
+pid_t Watchdog::getPlayerPid()
+{
+    std::lock_guard<std::mutex> lock(mtx);
+    return isRunning() ? player_pid : -1;
+}
+
+/**
+ * Starts the player with "/bin/sh -c <command>".
+ *
+ * The daemon has several threads, so after fork() the child may only call
+ * async-signal-safe functions. Therefore everything that allocates memory
+ * (environment, user lookup) is prepared before fork().
+ */
+void Watchdog::start()
+{
+    // When the daemon runs as root, the player runs as player_user
+    bool switch_user = (getuid() == 0);
+    uid_t uid        = 0;
+    gid_t gid        = 0;
+    std::vector<gid_t> groups;
+    std::string home = "/";
+    if (switch_user)
+    {
+        passwd *pw = getpwnam(player_user.c_str());
+        if (pw == nullptr)
+        {
+            LOG_ERROR("User ", player_user, " does not exist, cannot start ", player_name);
+            return;
+        }
+        uid  = pw->pw_uid;
+        gid  = pw->pw_gid;
+        home = pw->pw_dir;
+
+        int count = 0;
+        getgrouplist(player_user.c_str(), gid, nullptr, &count); // returns the number of groups
+        groups.resize(count);
+        getgrouplist(player_user.c_str(), gid, groups.data(), &count);
+    }
+
+    // Environment: as root a minimal one for the player user, otherwise the one of the daemon.
+    // Entries from the config replace existing ones with the same name.
+    std::vector<std::string> environment;
+    if (switch_user)
+        environment = {"HOME=" + home, "USER=" + player_user, "LOGNAME=" + player_user,
+                       "PATH=/usr/local/bin:/usr/bin:/bin"};
+    else
+        for (char **entry = environ; *entry != nullptr; entry++)
+            environment.emplace_back(*entry);
+
+    for (const std::string &entry : player_environment)
+    {
+        std::string name = entry.substr(0, entry.find('=') + 1); // "KEY="
+        std::erase_if(environment, [&name](const std::string &e) { return e.starts_with(name); });
+        environment.push_back(entry);
+    }
+
+    std::vector<char *> envp;
+    for (std::string &entry : environment)
+        envp.push_back(entry.data());
+    envp.push_back(nullptr);
+
+    const char *argv[] = {"/bin/sh", "-c", player_command.c_str(), nullptr};
+
+    sigset_t no_signals;
+    sigemptyset(&no_signals);
+
+    pid_t pid = fork();
+    if (pid < 0)
+    {
+        LOG_ERROR("Cannot start ", player_name, ": ", strerror(errno));
+        return;
+    }
+
+    if (pid == 0) // child
+    {
+        setpgid(0, 0);                                  // own process group, see stop()
+        sigprocmask(SIG_SETMASK, &no_signals, nullptr); // the daemon has blocked some signals
+        if (switch_user)
+        {
+            if (setgroups(groups.size(), groups.data()) != 0 || setgid(gid) != 0 || setuid(uid) != 0)
+                _exit(126);
+        }
+        if (chdir(home.c_str()) != 0)
+            _exit(126);
+
+        execve(argv[0], const_cast<char *const *>(argv), envp.data());
+        _exit(127); // only reached when execve() failed
+    }
+
+    // Also set the process group here, otherwise a stop() right after the start could
+    // happen before the child has called setpgid() and would not reach the player
+    setpgid(pid, pid);
+
+    player_pid     = pid;
+    last_heartbeat = std::chrono::steady_clock::now(); // the startup time counts like a heartbeat
+    LOG_INFO("Started ", player_name, " with pid ", pid, ": ", player_command);
+}
+
+/**
+ * Sends SIGTERM to the process group of the player, waits up to STOP_TIMEOUT
+ * and sends SIGKILL if it is still running.
+ */
+void Watchdog::stop()
+{
+    if (player_pid < 0)
+        return;
+
+    kill(-player_pid, SIGTERM);
+
+    auto deadline = std::chrono::steady_clock::now() + STOP_TIMEOUT;
+    while (waitpid(player_pid, nullptr, WNOHANG) == 0)
+    {
+        if (std::chrono::steady_clock::now() >= deadline)
+        {
+            LOG_WARNING(player_name, " does not stop, send SIGKILL.");
+            kill(-player_pid, SIGKILL);
+            waitpid(player_pid, nullptr, 0);
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+
+    kill(-player_pid, SIGKILL); // processes of the group that ignored SIGTERM
+    LOG_INFO("Stopped ", player_name, " with pid ", player_pid);
+    player_pid = -1;
+}
+
+/**
+ * Checks without blocking whether the player has ended. An ended player
+ * is reaped, so no zombie process is left.
+ */
+bool Watchdog::isRunning()
+{
+    if (player_pid < 0)
+        return false;
+
+    int status   = 0;
+    pid_t result = waitpid(player_pid, &status, WNOHANG);
+    if (result == 0)
         return true;
 
-    return (getPlayerProcId() > -1);
-}
-
-int Watchdog::getPlayerProcId()
-{
-    int pid = -1;
-
-    DIR *dp = opendir(proc_path.c_str());
-    if (dp == nullptr)
-        return pid;
-
-    struct dirent *dirp;
-    while (pid < 0 && (dirp = readdir(dp)))
+    if (result == player_pid)
     {
-        int id = atoi(dirp->d_name); // Skip non-numeric entries
-        if (id > 0 && isInCmdLine(dirp->d_name))
-        {
-            pid = id;
-        }
+        if (WIFEXITED(status))
+            LOG_WARNING(player_name, " exited with code ", WEXITSTATUS(status));
+        else if (WIFSIGNALED(status))
+            LOG_WARNING(player_name, " was killed by signal ", WTERMSIG(status));
     }
-    closedir(dp);
-
-    // ToDo: Check if it is neccessary to reboot if the player is an zombie and cannot restarted
-
-    return pid;
-}
-
-bool Watchdog::isInCmdLine(const string &dir_name) const
-{
-    // Read contents of virtual /proc/{pid}/cmdline file
-    string cmdPath = proc_path + "/" + dir_name + "/cmdline";
-    ifstream cmdFile(cmdPath.c_str());
-    string cmdLine;
-
-    getline(cmdFile, cmdLine);
-    if (!cmdLine.empty())
-    {
-        // Keep first cmdline item which contains the program path
-        size_t pos = cmdLine.find('\0');
-        if (pos != string::npos)
-            cmdLine = cmdLine.substr(0, pos);
-
-        // Keep program name only, removing the path
-        pos = cmdLine.rfind('/');
-        if (pos != string::npos)
-            cmdLine = cmdLine.substr(pos + 1);
-
-        return (player_name == cmdLine);
-    }
-
+    kill(-player_pid, SIGKILL); // processes of a start script that are still left
+    player_pid = -1;
     return false;
 }
 
-bool Watchdog::isZombie(const int pid) const
+bool Watchdog::isHanging() const
 {
-    bool is_zombie = false;
+    if (heartbeat_timeout.count() <= 0) // hang detection disabled
+        return false;
 
-    const string stat_path = proc_path + "/" + to_string(pid) + "/stat";
-
-    FILE *fpstat = fopen(stat_path.c_str(), "r");
-    if (!fpstat)
-    {
-        perror(stat_path.c_str());
-        exit(EXIT_FAILURE);
-    };
-    {
-        int rpid = 0;
-        char rcmd[32];
-        char rstatc = 0;
-        fscanf(fpstat, "%d %30s %c", &rpid, rcmd, &rstatc);
-        is_zombie = rstatc == 'Z';
-    }
-
-    fclose(fpstat);
-
-    return is_zombie;
+    return std::chrono::steady_clock::now() - last_heartbeat > heartbeat_timeout;
 }

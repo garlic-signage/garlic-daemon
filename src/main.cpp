@@ -42,7 +42,7 @@ int main(int argc, char **argv)
         Watchdog watchdog(configuration);
         IPCMessageReceiver receiver(configuration.getMessageQueue());
         SystemActions system_actions;
-        MessageDispatcher dispatcher(system_actions);
+        MessageDispatcher dispatcher(system_actions, watchdog);
 
         Daemon daemon(watchdog, receiver, dispatcher);
         daemon.start();

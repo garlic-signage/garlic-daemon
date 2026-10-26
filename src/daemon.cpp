@@ -116,7 +116,9 @@ void Daemon::loopMessageListener()
     std::string message;
     while (receiver.waitForMessage(message))
     {
-        std::cout << "Received message from queue: " << message << std::endl;
+        if (message != "heartbeat") // comes every few seconds and would flood the log
+            std::cout << "Received message from queue: " << message << std::endl;
+
         dispatcher.dispatch(message);
     }
     std::cout << "Finish message queue listener thread." << std::endl;

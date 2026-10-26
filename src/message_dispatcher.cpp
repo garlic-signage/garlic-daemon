@@ -18,11 +18,18 @@
 
 #include "message_dispatcher.hpp"
 
-MessageDispatcher::MessageDispatcher(SystemActions &system_actions) : MySystemActions(system_actions) {}
+MessageDispatcher::MessageDispatcher(SystemActions &system_actions, Watchdog &watchdog)
+    : MySystemActions(system_actions), watchdog(watchdog)
+{
+}
 
 void MessageDispatcher::dispatch(const std::string &message)
 {
-    if (message == REBOOT)
+    if (message == HEARTBEAT)
+    {
+        watchdog.heartbeat();
+    }
+    else if (message == REBOOT)
     {
         MySystemActions.reboot();
     }
