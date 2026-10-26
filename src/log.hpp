@@ -20,6 +20,7 @@
 #define LOG_HPP
 
 #include <chrono>
+#include <ctime>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
@@ -32,8 +33,10 @@
 inline std::string getLogTime(std::chrono::time_point<std::chrono::system_clock> time)
 {
     auto epoch_seconds = std::chrono::system_clock::to_time_t(time);
+    std::tm utc_time{};
+    gmtime_r(&epoch_seconds, &utc_time); // gmtime() uses a static buffer and is not thread safe
     std::stringstream stream;
-    stream << std::put_time(gmtime(&epoch_seconds), "[%F_%T");
+    stream << std::put_time(&utc_time, "[%F_%T");
     auto truncated = std::chrono::system_clock::from_time_t(epoch_seconds);
     auto delta_us  = std::chrono::duration_cast<std::chrono::milliseconds>(time - truncated).count();
     stream << "." << std::fixed << std::setw(3) << std::setfill('0') << delta_us << "]";
