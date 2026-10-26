@@ -34,10 +34,14 @@
 
 using namespace std;
 
+/**
+ * Checks via the proc filesystem whether the player process is running.
+ */
 class Watchdog
 {
     public:
-        Watchdog();
+        /// proc_path can be replaced by a fake directory in tests.
+        explicit Watchdog(const string &proc_path = "/proc");
         bool isPlayerRunning();
         bool isReboot();
         void setActivity(bool is_active);
@@ -45,6 +49,7 @@ class Watchdog
         void startPlayer();
         void killZombieProcesses();
     private:
+        string proc_path;
         string player_name    = "garlic-player";
         string path_to_player_executable = "/opt/garlic-player/garlic.sh";
         int getPlayerProcId();

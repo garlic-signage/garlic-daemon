@@ -18,7 +18,7 @@
 
 #include "watchdog.hpp"
 
-Watchdog::Watchdog()
+Watchdog::Watchdog(const string &proc_path) : proc_path(proc_path)
 {
 
 }
@@ -53,7 +53,7 @@ int Watchdog::getPlayerProcId()
 {
     int pid = -1;
 
-    DIR *dp = opendir("/proc");
+    DIR *dp = opendir(proc_path.c_str());
     if (dp == NULL)
     {
         closedir(dp);
@@ -79,7 +79,7 @@ int Watchdog::getPlayerProcId()
 bool Watchdog::isInCmdLine(string dir_name)
 {
     // Read contents of virtual /proc/{pid}/cmdline file
-    string cmdPath = string("/proc/") + dir_name + "/cmdline";
+    string cmdPath = proc_path + "/" + dir_name + "/cmdline";
     ifstream cmdFile(cmdPath.c_str());
     string cmdLine;
 
@@ -106,11 +106,10 @@ bool Watchdog::isZombie(int pid)
 {
     bool is_zombie = false;
 
-    char pbuf[32];
-    snprintf(pbuf, sizeof(pbuf), "/proc/%d/stat", pid);
+    string stat_path = proc_path + "/" + to_string(pid) + "/stat";
 
-    FILE* fpstat = fopen(pbuf, "r");
-    if (!fpstat) { perror(pbuf); exit(EXIT_FAILURE); };
+    FILE* fpstat = fopen(stat_path.c_str(), "r");
+    if (!fpstat) { perror(stat_path.c_str()); exit(EXIT_FAILURE); };
     {
       int rpid =0; char rcmd[32]; char rstatc = 0;
       fscanf(fpstat, "%d %30s %c", &rpid, rcmd, &rstatc);
