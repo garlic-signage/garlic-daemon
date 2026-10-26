@@ -18,28 +18,28 @@ endif ()
 
 # All classes go into a static library, so the daemon and the tests can share them
 set(SOURCE_FILES
-    source/configuration.hpp
-    source/configuration.cpp
-    source/cmd_parser.hpp
-    source/cmd_parser.cpp
-    source/watchdog.hpp
-    source/watchdog.cpp
-    source/daemon.hpp
-    source/daemon.cpp
-    source/message_dispatcher.hpp
-    source/message_dispatcher.cpp
-    source/system_actions.hpp
-    source/system_actions.cpp
-    source/ipc_message_receiver.hpp
-    source/ipc_message_receiver.cpp
-    source/log.hpp)
+    src/configuration.hpp
+    src/configuration.cpp
+    src/cmd_parser.hpp
+    src/cmd_parser.cpp
+    src/watchdog.hpp
+    src/watchdog.cpp
+    src/daemon.hpp
+    src/daemon.cpp
+    src/message_dispatcher.hpp
+    src/message_dispatcher.cpp
+    src/system_actions.hpp
+    src/system_actions.cpp
+    src/ipc_message_receiver.hpp
+    src/ipc_message_receiver.cpp
+    src/log.hpp)
 
 add_library(garlic-core STATIC ${SOURCE_FILES})
-target_include_directories(garlic-core PUBLIC source)
+target_include_directories(garlic-core PUBLIC src)
 target_link_libraries(garlic-core PUBLIC libconfig++.so)
 
 # The daemon itself only consists of main.cpp
-add_executable(${THIS} source/main.cpp)
+add_executable(${THIS} src/main.cpp)
 target_link_libraries(${THIS} PRIVATE garlic-core)
 
 # Unit tests (disable with -DBUILD_TESTS=OFF)
