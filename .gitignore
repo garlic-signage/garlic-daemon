@@ -42,7 +42,8 @@ Makefile*
 *build-*
 *.qm
 *.prl
-
+.DS_Store
+/.idea/
 # Qt unit tests
 target_wrapper.*
 
