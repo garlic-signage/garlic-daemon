@@ -1,4 +1,4 @@
-Rename source directory to src, add missing includes/*************************************************************************************
+/*************************************************************************************
     garlic-daemon: Linux daemon for garlic-player
     Copyright (C) 2023 Nikolaos Sagiadinos <ns@smil-control.com>
     This file is part of the garlic-daemon source code

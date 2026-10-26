@@ -19,6 +19,7 @@
 #include "ipc_message_receiver.hpp"
 
 #include <cstring>
+#include <ctime>
 
 /**
  * @brief IPCMessageReceiver::IPCMessageReceiver
@@ -26,7 +27,7 @@
  * Opens a message queue with given name and throws an exception
  * when it is not possible
  *
- * @param queueName
+ * @param name
  */
 IPCMessageReceiver::IPCMessageReceiver(const std::string &name)
 {
@@ -41,74 +42,44 @@ IPCMessageReceiver::IPCMessageReceiver(const std::string &name)
 /**
  * @brief IPCMessageReceiver::~IPCMessageReceiver
  *
- * We should delete the message queue otherwise the last
- * message could be left.
- *
+ * Stops and joins the receiver thread first, because it still uses the queue.
+ * Then the message queue is deleted, otherwise the last message could be left.
  */
 IPCMessageReceiver::~IPCMessageReceiver()
 {
+    receiver_thread.request_stop();
+    if (receiver_thread.joinable())
+        receiver_thread.join();
+
+    mq_close(mq);
     mq_unlink(message_queue_name.c_str());
-}
-
-/**
- * @brief IPCMessageReceiver::loopIPCReceiver
- *
- * Main waiting loop for receiving messages. Message will be pushed into
- * a std::queue<std::string> queue.
- */
-void IPCMessageReceiver::loopIPCReceiver()
-{
-    while (running.load())
-    {
-        char buffer[8192];
-        ssize_t bytes_read;
-
-        bytes_read = mq_receive(mq, buffer, sizeof(buffer), nullptr);
-        if (bytes_read >= 0)
-        {
-            std::string message(buffer, bytes_read);
-            this->push(message);
-            if (message == TERMINATION_MESSAGE)
-                break;
-        }
-        else if (errno != EAGAIN)
-        {
-            std::cerr << "Failed to receive message: " << strerror(errno) << std::endl;
-        }
-    }
-    std::cout << "Finish message reciever thread." << std::endl;
 }
 
 /**
  * @brief IPCMessageReceiver::startIPCReceiver
  *
- * Starts the loopIPCReceiver thread an detached it to unblock.
- *
+ * Starts the loopIPCReceiver thread.
  */
 void IPCMessageReceiver::startIPCReceiver()
 {
-    running.store(true);
-    receiverThread = std::thread(&IPCMessageReceiver::loopIPCReceiver, this);
-    receiverThread.detach();
+    receiver_thread = std::jthread([this](std::stop_token stop_token) { loopIPCReceiver(stop_token); });
 }
 
 /**
  * @brief IPCMessageReceiver::stopIPCReceiver
  *
- * Stops the receiveMessages thread
+ * Requests the receiver thread to stop and wakes up waitForMessage().
+ * Calling it more than once is harmless.
  */
 void IPCMessageReceiver::stopIPCReceiver()
 {
-    running.store(false);
-    mq_send(mq, TERMINATION_MESSAGE.c_str(), TERMINATION_MESSAGE.size(), 0);
-    cv.notify_one();
-    mq_close(mq);
+    receiver_thread.request_stop();
 }
 
 /**
  * @brief IPCMessageReceiver::pollingQueue
  *
- * Returns immediately after checking if there is a mesasge in queue.
+ * Returns immediately after checking if there is a message in queue.
  *
  * @param message
  * @return bool
@@ -127,22 +98,59 @@ bool IPCMessageReceiver::pollingQueue(std::string &message)
 /**
  * @brief IPCMessageReceiver::waitForMessage
  *
- * Waits until a message enters the queue and then returns back.
+ * Waits until a message enters the queue or the receiver is stopped.
  *
  * @param message
+ * @return true when a message was received, false when the receiver was stopped
  */
-void IPCMessageReceiver::waitForMessage(std::string &message)
+bool IPCMessageReceiver::waitForMessage(std::string &message)
 {
     std::unique_lock<std::mutex> lock(mtx);
-    cv.wait(lock, [this] { return !queue.empty() || !running.load(); });
+    // Returns false when a stop was requested and the queue is still empty
+    if (!cv.wait(lock, receiver_thread.get_stop_token(), [this] { return !queue.empty(); }))
+        return false;
+
     message = queue.front();
     queue.pop();
+    return true;
+}
+
+/**
+ * @brief IPCMessageReceiver::loopIPCReceiver
+ *
+ * Main loop of the receiver thread. Received messages will be pushed into
+ * a std::queue<std::string> queue. mq_timedreceive() returns at least every
+ * RECEIVE_TIMEOUT_MS, so the loop can check whether it should stop.
+ */
+void IPCMessageReceiver::loopIPCReceiver(std::stop_token stop_token)
+{
+    char buffer[8192];
+
+    while (!stop_token.stop_requested())
+    {
+        // mq_timedreceive() needs an absolute time
+        timespec timeout;
+        clock_gettime(CLOCK_REALTIME, &timeout);
+        timeout.tv_nsec += RECEIVE_TIMEOUT_MS * 1000000L;
+        if (timeout.tv_nsec >= 1000000000L)
+        {
+            timeout.tv_sec += 1;
+            timeout.tv_nsec -= 1000000000L;
+        }
+
+        ssize_t bytes_read = mq_timedreceive(mq, buffer, sizeof(buffer), nullptr, &timeout);
+        if (bytes_read >= 0)
+            push(std::string(buffer, bytes_read));
+        else if (errno != ETIMEDOUT && errno != EINTR)
+            std::cerr << "Failed to receive message: " << strerror(errno) << std::endl;
+    }
+    std::cout << "Finish message receiver thread." << std::endl;
 }
 
 /**
  * @brief IPCMessageReceiver::push
  *
- * A threadsave push into std::queue<std::string> queue;
+ * A threadsafe push into std::queue<std::string> queue;
  *
  * @param message
  */

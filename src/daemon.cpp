@@ -71,7 +71,9 @@ void Daemon::startMessageListener()
     while (is_running.load())
     {
         std::string message;
-        MyIPCMessageReceiver->waitForMessage(message);
+        if (!MyIPCMessageReceiver->waitForMessage(message))
+            break; // receiver was stopped
+
         std::cout << "Received message from queue: " << message << std::endl;
         MyMessageDispatcher->dispatch(message);
     }
