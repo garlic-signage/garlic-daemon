@@ -25,7 +25,7 @@ Watchdog::Watchdog(const string &proc_path) : proc_path(proc_path)
 
 void Watchdog::setActivity(bool is_active)
 {
-    is_active = is_active;
+    this->is_active = is_active;
 }
 
 void Watchdog::check()
@@ -55,10 +55,7 @@ int Watchdog::getPlayerProcId()
 
     DIR *dp = opendir(proc_path.c_str());
     if (dp == NULL)
-    {
-        closedir(dp);
         return pid;
-    }
 
     struct dirent *dirp;
     while (pid < 0 && (dirp = readdir(dp)))

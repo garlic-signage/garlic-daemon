@@ -57,6 +57,13 @@ TEST_F(WatchdogTest, EmptyProcMeansNotRunning)
     EXPECT_FALSE(watchdog.isPlayerRunning());
 }
 
+TEST_F(WatchdogTest, MissingProcMeansNotRunning)
+{
+    Watchdog watchdog(proc_dir / "does-not-exist");
+
+    EXPECT_FALSE(watchdog.isPlayerRunning());
+}
+
 TEST_F(WatchdogTest, FindsPlayerWithPathAndArguments)
 {
     addProcess("1", "/sbin/init\0"s);
