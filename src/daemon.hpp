@@ -26,10 +26,13 @@
 #include "watchdog.hpp"
 #include "ipc_message_receiver.hpp"
 #include "message_dispatcher.hpp"
+#include "usb_monitor.hpp"
 
 /**
- * Runs the daemon: a watchdog thread that checks the player periodically
- * and a listener thread that passes received messages to the dispatcher.
+ * Runs the daemon with three threads:
+ *  - watchdog: checks the player periodically
+ *  - listener: passes received messages to the dispatcher
+ *  - usb: mounts USB sticks and handles their content
  *
  * Signals are not handled with a signal handler. Instead blockSignals()
  * blocks them before any thread is started and waitForTerminationSignal()
@@ -38,10 +41,11 @@
 class Daemon
 {
     public:
-        Daemon(Watchdog &watchdog, IPCMessageReceiver &receiver, MessageDispatcher &dispatcher);
+        Daemon(Watchdog &watchdog, IPCMessageReceiver &receiver, MessageDispatcher &dispatcher,
+               UsbMonitor &usb_monitor);
         ~Daemon();
 
-        /// Starts the message receiver, the watchdog thread and the listener thread.
+        /// Starts the message receiver and the three threads.
         void start();
 
         /// Stops all threads. Calling it more than once is harmless.
@@ -63,11 +67,13 @@ class Daemon
         Watchdog &watchdog;
         IPCMessageReceiver &receiver;
         MessageDispatcher &dispatcher;
+        UsbMonitor &usb_monitor;
 
         std::mutex watchdog_mutex;
         std::condition_variable_any watchdog_cv;
         std::jthread watchdog_thread; // threads are the last members, so they are destroyed first
         std::jthread listener_thread;
+        std::jthread usb_thread;
 
         void loopWatchdog(std::stop_token stop_token);
         void loopMessageListener();

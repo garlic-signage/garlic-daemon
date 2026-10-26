@@ -50,6 +50,8 @@ TEST(Configuration, DefaultValues)
     EXPECT_EQ(configuration.getAppName(), "garlic-daemon");
     EXPECT_EQ(configuration.getMessageQueue(), "/garlic-daemon");
     EXPECT_EQ(configuration.getStateDir(), "/var/lib/garlic-daemon");
+    EXPECT_EQ(configuration.getUsbMountDir(), "/media/garlic");
+    EXPECT_EQ(configuration.getUsbFirmwareFile(), "garlic-player.zip");
     expectPlayerDefaults(configuration);
 }
 
@@ -58,6 +60,10 @@ TEST(Configuration, ReadsAllValues)
     Configuration configuration = readConfiguration("app_name = \"my-daemon\";"
                                                     "message_queue = \"/my-queue\";"
                                                     "state_dir = \"/tmp/state\";"
+                                                    "Usb = {"
+                                                    "  mount_dir = \"/mnt/usb\";"
+                                                    "  firmware_file = \"firmware.zip\";"
+                                                    "};"
                                                     "Player = {"
                                                     "  name = \"my-player\";"
                                                     "  command = \"/opt/player/start.sh --fullscreen\";"
@@ -76,6 +82,8 @@ TEST(Configuration, ReadsAllValues)
     EXPECT_EQ(configuration.getHeartbeatTimeout(), 60);
     EXPECT_EQ(configuration.getRebootAfterCrashes(), 3);
     EXPECT_EQ(configuration.getStateDir(), "/tmp/state");
+    EXPECT_EQ(configuration.getUsbMountDir(), "/mnt/usb");
+    EXPECT_EQ(configuration.getUsbFirmwareFile(), "firmware.zip");
 }
 
 TEST(Configuration, MissingPlayerGroupKeepsPlayerDefaults)
@@ -114,4 +122,6 @@ TEST(Configuration, ShippedConfigFileIsValid)
     EXPECT_EQ(configuration.getHeartbeatTimeout(), 0);
     EXPECT_EQ(configuration.getRebootAfterCrashes(), 7);
     EXPECT_EQ(configuration.getStateDir(), "/var/lib/garlic-daemon");
+    EXPECT_EQ(configuration.getUsbMountDir(), "/media/garlic");
+    EXPECT_EQ(configuration.getUsbFirmwareFile(), "garlic-player.zip");
 }

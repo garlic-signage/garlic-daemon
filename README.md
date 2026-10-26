@@ -8,8 +8,9 @@ the player is not allowed to do:
 - **Watchdog**: starts the player, restarts it when it crashes or hangs,
   and reboots the system if the player crashes again and again
 - **System commands** from the player, e.g. reboot
+- **USB sticks**: mounts them and reacts to a configuration, a player update or SMIL content on them
 
-Planned: player updates, mounting USB sticks.
+Planned: the real actions for the USB stick content (so far stubs), player updates.
 
 ## Watchdog
 
@@ -78,7 +79,36 @@ a reboot loop. Therefore:
 
 The systemd unit creates `/var/lib/garlic-daemon` with `StateDirectory=`.
 
-### Log messages
+## USB sticks
+
+The daemon mounts USB sticks itself, so the player can read them.
+
+- It listens to udev events. A partition (or a whole stick without partitions) on USB with a
+  supported filesystem (`vfat`, `exfat`, `ntfs3`, `ext2`, `ext3`, `ext4`) is mounted to
+  `<Usb.mount_dir>/<device>`, e.g. `/media/garlic/sda1`.
+- The mount is **read-only** with `nosuid`, `nodev`, `noexec`, so pulling the stick without
+  unmounting cannot damage it and nothing on it can be executed.
+- Sticks that are already plugged in when the daemon starts are mounted too.
+- When the stick is removed, it is unmounted and the mount point is deleted.
+  When the daemon stops, all sticks are unmounted.
+
+### Content of the stick
+
+After mounting, the daemon looks into the root directory of the stick. It handles **all** files it finds,
+in this order, so one stick can set up a device completely:
+
+| Order | File | Action |
+|---|---|---|
+| 1 | `config.xml` | the daemon applies the WiFi settings, the rest (player name, content url ...) goes to the player |
+| 2 | `garlic-player.zip` (name from `Usb.firmware_file`) | updates the player |
+| 3 | `SMIL/index.smil` | passes the SMIL index to the player (same layout as for the Android garlic-launcher) |
+
+The actions are **stubs** so far (`src/usb_actions.cpp`), they only write a log message.
+
+Only regular files count. Directories with these names and symlinks are ignored,
+because a symlink on a stick could point to a file of the system.
+
+## Log messages
 
 All messages go to the journal: `journalctl -u garlic-daemon`
 
@@ -92,11 +122,16 @@ All messages go to the journal: `journalctl -u garlic-daemon`
 | `No reboot, the watchdog already rebooted within the last 6 hours.` | reboot skipped |
 | `No reboot, cannot write …` | reboot skipped, check `state_dir` |
 | `garlic-player does not stop, send SIGKILL.` | player ignored SIGTERM |
+| `Mounted USB device … to …` / `Unmounted USB device …` | USB stick plugged in / removed |
+| `USB device … has unsupported filesystem …` | stick not mounted, e.g. encrypted or swap |
+| `Cannot mount … to …` | mount failed, e.g. damaged filesystem |
+| `Not implemented yet: …` | stub of a USB action, see above |
 
 ## Requirements
 
 - GCC 14 or newer (C++23), CMake 3.20 or newer
 - libconfig++ (Debian: `libconfig++-dev`)
+- libudev (Debian: `libudev-dev`)
 - GoogleTest for the tests (Debian: `libgtest-dev`)
 
 ## Build and test
@@ -140,6 +175,8 @@ An invalid file ends the daemon with an error message.
 | `app_name` | `"garlic-daemon"` | name of the application |
 | `message_queue` | `"/garlic-daemon"` | POSIX message queue for the messages of the player |
 | `state_dir` | `"/var/lib/garlic-daemon"` | directory for files that must survive a reboot |
+| `Usb.mount_dir` | `"/media/garlic"` | USB sticks are mounted to `<mount_dir>/<device>` |
+| `Usb.firmware_file` | `"garlic-player.zip"` | file name of a player update on the stick |
 | `Player.name` | `"garlic-player"` | name in log messages |
 | `Player.command` | `"/opt/garlic-player/garlic.sh"` | start command, run with `/bin/sh -c` |
 | `Player.user` | `"digitalsignage"` | user the player runs as |

@@ -30,13 +30,22 @@ set(SOURCE_FILES
     src/message_dispatcher.cpp
     src/system_actions.hpp
     src/system_actions.cpp
+    src/usb_actions.hpp
+    src/usb_actions.cpp
+    src/usb_content_handler.hpp
+    src/usb_content_handler.cpp
+    src/usb_monitor.hpp
+    src/usb_monitor.cpp
     src/ipc_message_receiver.hpp
     src/ipc_message_receiver.cpp
     src/log.hpp)
 
 add_library(garlic-core STATIC ${SOURCE_FILES})
 target_include_directories(garlic-core PUBLIC src)
-target_link_libraries(garlic-core PUBLIC libconfig++.so)
+# libudev reports plugged in USB sticks
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(UDEV REQUIRED IMPORTED_TARGET libudev)
+target_link_libraries(garlic-core PUBLIC libconfig++.so PkgConfig::UDEV)
 
 # The daemon itself only consists of main.cpp
 add_executable(${THIS} src/main.cpp)

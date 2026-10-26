@@ -35,8 +35,8 @@ sigset_t daemonSignals()
 }
 } // namespace
 
-Daemon::Daemon(Watchdog &watchdog, IPCMessageReceiver &receiver, MessageDispatcher &dispatcher)
-    : watchdog(watchdog), receiver(receiver), dispatcher(dispatcher)
+Daemon::Daemon(Watchdog &watchdog, IPCMessageReceiver &receiver, MessageDispatcher &dispatcher, UsbMonitor &usb_monitor)
+    : watchdog(watchdog), receiver(receiver), dispatcher(dispatcher), usb_monitor(usb_monitor)
 {
 }
 
@@ -53,6 +53,7 @@ void Daemon::start()
     receiver.startIPCReceiver();
     watchdog_thread = std::jthread([this](std::stop_token stop_token) { loopWatchdog(stop_token); });
     listener_thread = std::jthread([this] { loopMessageListener(); });
+    usb_thread      = std::jthread([this](std::stop_token stop_token) { usb_monitor.run(stop_token); });
 }
 
 /**
@@ -63,6 +64,7 @@ void Daemon::stop()
 {
     receiver.stopIPCReceiver();
     watchdog_thread.request_stop();
+    usb_thread.request_stop();
 }
 
 void Daemon::reload()

@@ -21,6 +21,9 @@
 #include "daemon.hpp"
 #include "log.hpp"
 #include "message_dispatcher.hpp"
+#include "usb_actions.hpp"
+#include "usb_content_handler.hpp"
+#include "usb_monitor.hpp"
 #include "watchdog.hpp"
 
 int main(int argc, char **argv)
@@ -44,7 +47,11 @@ int main(int argc, char **argv)
         IPCMessageReceiver receiver(configuration.getMessageQueue());
         MessageDispatcher dispatcher(system_actions, watchdog);
 
-        Daemon daemon(watchdog, receiver, dispatcher);
+        UsbActions usb_actions; // stub, see usb_actions.hpp
+        UsbContentHandler usb_content_handler(configuration, usb_actions);
+        UsbMonitor usb_monitor(configuration, system_actions, usb_content_handler);
+
+        Daemon daemon(watchdog, receiver, dispatcher, usb_monitor);
         daemon.start();
         daemon.waitForTerminationSignal(); // blocks until SIGINT or SIGTERM
 

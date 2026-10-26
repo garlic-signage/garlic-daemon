@@ -7,6 +7,8 @@ add_executable(garlic-tests
     test_daemon.cpp
     test_ipc_message_receiver.cpp
     test_message_dispatcher.cpp
+    test_usb_content_handler.cpp
+    test_usb_monitor.cpp
     test_watchdog.cpp)
 
 target_link_libraries(garlic-tests PRIVATE garlic-core GTest::gtest_main)

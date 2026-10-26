@@ -19,8 +19,10 @@
 #ifndef SYSTEM_ACTIONS_HPP
 #define SYSTEM_ACTIONS_HPP
 
+#include <string>
+
 /**
- * Bundles the calls that change the operating system (e.g. reboot).
+ * Bundles the calls that change the operating system (e.g. reboot, mount).
  *
  * The methods are virtual, so tests can override them with a fake
  * and the test machine is not rebooted.
@@ -32,6 +34,12 @@ class SystemActions
 
         /// Writes all buffers to disk and reboots the machine.
         virtual void reboot();
+
+        /// Mounts device read-only to mount_point (nosuid, nodev, noexec). Returns false on error.
+        virtual bool mount(const std::string &device, const std::string &mount_point, const std::string &fs_type);
+
+        /// Unmounts mount_point, also when the device is already removed (lazy unmount).
+        virtual void unmount(const std::string &mount_point);
 };
 
 #endif // SYSTEM_ACTIONS_HPP

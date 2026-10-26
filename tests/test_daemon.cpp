@@ -23,6 +23,7 @@
 #include <unistd.h>
 #include "daemon.hpp"
 #include "fake_system_actions.hpp"
+#include "fake_usb_actions.hpp"
 
 using namespace std::chrono_literals;
 
@@ -36,6 +37,9 @@ class DaemonTest : public ::testing::Test
         Watchdog watchdog{configuration, system_actions};
         MessageDispatcher dispatcher{system_actions, watchdog};
         IPCMessageReceiver receiver{uniqueQueueName()};
+        FakeUsbActions usb_actions;
+        UsbContentHandler usb_content_handler{configuration, usb_actions};
+        UsbMonitor usb_monitor{configuration, system_actions, usb_content_handler};
 
         // The watchdog would try to start the real player, these tests are about the messages
         DaemonTest() { watchdog.setActivity(false); }
@@ -67,7 +71,7 @@ class DaemonTest : public ::testing::Test
 
 TEST_F(DaemonTest, ReceivedMessageIsDispatched)
 {
-    Daemon daemon(watchdog, receiver, dispatcher);
+    Daemon daemon(watchdog, receiver, dispatcher, usb_monitor);
     daemon.start();
 
     send("reboot");
@@ -77,7 +81,7 @@ TEST_F(DaemonTest, ReceivedMessageIsDispatched)
 
 TEST_F(DaemonTest, SeveralMessagesAreDispatched)
 {
-    Daemon daemon(watchdog, receiver, dispatcher);
+    Daemon daemon(watchdog, receiver, dispatcher, usb_monitor);
     daemon.start();
 
     send("reboot");
@@ -89,7 +93,7 @@ TEST_F(DaemonTest, SeveralMessagesAreDispatched)
 
 TEST_F(DaemonTest, NoMessagesAreDispatchedAfterStop)
 {
-    Daemon daemon(watchdog, receiver, dispatcher);
+    Daemon daemon(watchdog, receiver, dispatcher, usb_monitor);
     daemon.start();
     daemon.stop();
 
@@ -103,7 +107,7 @@ TEST_F(DaemonTest, StopEndsAllThreadsQuickly)
 {
     auto begin = std::chrono::steady_clock::now();
     {
-        Daemon daemon(watchdog, receiver, dispatcher);
+        Daemon daemon(watchdog, receiver, dispatcher, usb_monitor);
         daemon.start();
         std::this_thread::sleep_for(50ms); // the watchdog thread is now waiting for its next check
         daemon.stop();
@@ -115,7 +119,7 @@ TEST_F(DaemonTest, StopEndsAllThreadsQuickly)
 
 TEST_F(DaemonTest, StopWithoutStartIsHarmless)
 {
-    Daemon daemon(watchdog, receiver, dispatcher);
+    Daemon daemon(watchdog, receiver, dispatcher, usb_monitor);
     daemon.stop();
     daemon.stop();
 }
@@ -127,7 +131,7 @@ TEST_F(DaemonTest, SighupReloadsAndSigtermStops)
     pthread_sigmask(SIG_SETMASK, nullptr, &old_mask);
     Daemon::blockSignals();
 
-    Daemon daemon(watchdog, receiver, dispatcher);
+    Daemon daemon(watchdog, receiver, dispatcher, usb_monitor);
     daemon.start();
 
     // raise() sends the signal to this thread, where it stays pending until sigwait() takes it

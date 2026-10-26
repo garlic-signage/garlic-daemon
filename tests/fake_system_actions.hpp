@@ -20,17 +20,38 @@
 #define FAKE_SYSTEM_ACTIONS_HPP
 
 #include <atomic>
+#include <string>
+#include <vector>
 #include "system_actions.hpp"
 
-// Replaces the real system calls, so the test machine is not rebooted.
-// It only counts how often each action was called.
-// The counter is atomic, because the Daemon calls it from its listener thread.
+// Replaces the real system calls, so the test machine is not rebooted
+// and no root rights are needed for mounting.
+// It only records the calls.
+// reboot_calls is atomic, because the Daemon calls it from its listener thread.
 class FakeSystemActions : public SystemActions
 {
     public:
         std::atomic<int> reboot_calls = 0;
 
+        struct MountCall
+        {
+                std::string device;
+                std::string mount_point;
+                std::string fs_type;
+        };
+        std::vector<MountCall> mount_calls;
+        std::vector<std::string> unmount_calls;
+        bool mount_result = true; // false simulates a failing mount
+
         void reboot() override { reboot_calls++; }
+
+        bool mount(const std::string &device, const std::string &mount_point, const std::string &fs_type) override
+        {
+            mount_calls.push_back({device, mount_point, fs_type});
+            return mount_result;
+        }
+
+        void unmount(const std::string &mount_point) override { unmount_calls.push_back(mount_point); }
 };
 
 #endif // FAKE_SYSTEM_ACTIONS_HPP

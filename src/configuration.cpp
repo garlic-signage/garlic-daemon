@@ -36,6 +36,17 @@ void Configuration::readLibConfigValues(const libconfig::Config *config)
         if (config->exists("state_dir"))
             config->lookupValue("state_dir", state_dir);
 
+        if (config->exists("Usb"))
+        {
+            const libconfig::Setting &usb = config->lookup("Usb");
+
+            if (usb.exists("mount_dir"))
+                usb.lookupValue("mount_dir", usb_mount_dir);
+
+            if (usb.exists("firmware_file"))
+                usb.lookupValue("firmware_file", usb_firmware_file);
+        }
+
         if (!config->exists("Player"))
             return;
 
@@ -113,4 +124,14 @@ int Configuration::getHeartbeatTimeout() const
 int Configuration::getRebootAfterCrashes() const
 {
     return reboot_after_crashes;
+}
+
+std::string Configuration::getUsbMountDir() const
+{
+    return usb_mount_dir;
+}
+
+std::string Configuration::getUsbFirmwareFile() const
+{
+    return usb_firmware_file;
 }

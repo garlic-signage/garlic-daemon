@@ -43,16 +43,20 @@ class Configuration
         [[nodiscard]] std::vector<std::string> getPlayerEnvironment() const;
         [[nodiscard]] int getHeartbeatTimeout() const;
         [[nodiscard]] int getRebootAfterCrashes() const;
+        [[nodiscard]] std::string getUsbMountDir() const;
+        [[nodiscard]] std::string getUsbFirmwareFile() const;
 
     private:
-        const std::string APP_NAME       = "garlic-daemon";
-        const std::string MESSAGE_QUEUE  = "/garlic-daemon";
-        const std::string STATE_DIR      = "/var/lib/garlic-daemon";
-        const std::string PLAYER_NAME    = "garlic-player";
-        const std::string PLAYER_COMMAND = "/opt/garlic-player/garlic.sh";
-        const std::string PLAYER_USER    = "digitalsignage";
-        const int HEARTBEAT_TIMEOUT      = 0; // disabled
-        const int REBOOT_AFTER_CRASHES   = 7; // when the backoff has reached its maximum, 0 = never
+        const std::string APP_NAME          = "garlic-daemon";
+        const std::string MESSAGE_QUEUE     = "/garlic-daemon";
+        const std::string STATE_DIR         = "/var/lib/garlic-daemon";
+        const std::string PLAYER_NAME       = "garlic-player";
+        const std::string PLAYER_COMMAND    = "/opt/garlic-player/garlic.sh";
+        const std::string PLAYER_USER       = "digitalsignage";
+        const int HEARTBEAT_TIMEOUT         = 0; // disabled
+        const int REBOOT_AFTER_CRASHES      = 7; // when the backoff has reached its maximum, 0 = never
+        const std::string USB_MOUNT_DIR     = "/media/garlic";
+        const std::string USB_FIRMWARE_FILE = "garlic-player.zip";
 
         std::string app_name       = APP_NAME;
         std::string message_queue  = MESSAGE_QUEUE;
@@ -61,8 +65,10 @@ class Configuration
         std::string player_command = PLAYER_COMMAND;
         std::string player_user    = PLAYER_USER;
         std::vector<std::string> player_environment;
-        int heartbeat_timeout    = HEARTBEAT_TIMEOUT;
-        int reboot_after_crashes = REBOOT_AFTER_CRASHES;
+        int heartbeat_timeout         = HEARTBEAT_TIMEOUT;
+        int reboot_after_crashes      = REBOOT_AFTER_CRASHES;
+        std::string usb_mount_dir     = USB_MOUNT_DIR;
+        std::string usb_firmware_file = USB_FIRMWARE_FILE;
 };
 
 #endif // CONFIGURATION_HPP
