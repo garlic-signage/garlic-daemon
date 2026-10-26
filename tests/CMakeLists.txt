@@ -5,7 +5,7 @@ add_executable(garlic-tests
     test_cmd_parser.cpp
     test_configuration.cpp
     test_daemon.cpp
-    test_ipc_message_receiver.cpp
+    test_local_socket_server.cpp
     test_message_dispatcher.cpp
     test_usb_content_handler.cpp
     test_usb_monitor.cpp

@@ -18,8 +18,10 @@
 
 #include <gtest/gtest.h>
 #include <chrono>
+#include <cstring>
 #include <csignal>
-#include <fcntl.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <unistd.h>
 #include "daemon.hpp"
 #include "fake_system_actions.hpp"
@@ -28,7 +30,7 @@
 using namespace std::chrono_literals;
 
 // Tests the Daemon with the real classes, only the system actions are faked.
-// Every test uses its own message queue name.
+// Every test uses its own socket.
 class DaemonTest : public ::testing::Test
 {
     protected:
@@ -36,7 +38,7 @@ class DaemonTest : public ::testing::Test
         Configuration configuration;
         Watchdog watchdog{configuration, system_actions};
         MessageDispatcher dispatcher{system_actions, watchdog};
-        IPCMessageReceiver receiver{uniqueQueueName()};
+        LocalSocketServer socket_server{socketPath(), getuid()};
         FakeUsbActions usb_actions;
         UsbContentHandler usb_content_handler{configuration, usb_actions};
         UsbMonitor usb_monitor{configuration, system_actions, usb_content_handler};
@@ -44,19 +46,23 @@ class DaemonTest : public ::testing::Test
         // The watchdog would try to start the real player, these tests are about the messages
         DaemonTest() { watchdog.setActivity(false); }
 
-        static std::string uniqueQueueName()
+        static std::string socketPath()
         {
-            return "/garlic-test-" + std::to_string(getpid()) + "-" +
-                   ::testing::UnitTest::GetInstance()->current_test_info()->name();
+            return "/tmp/garlic-test-" + std::to_string(getpid()) + "-" +
+                   ::testing::UnitTest::GetInstance()->current_test_info()->name() + ".sock";
         }
 
-        // Sends a message like the player would do from another process.
+        // Sends a message like the player would do
         static void send(const std::string &message)
         {
-            mqd_t sender = mq_open(uniqueQueueName().c_str(), O_WRONLY);
-            ASSERT_NE(sender, (mqd_t)-1) << strerror(errno);
-            ASSERT_EQ(mq_send(sender, message.c_str(), message.size(), 0), 0) << strerror(errno);
-            mq_close(sender);
+            int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+            sockaddr_un address{};
+            address.sun_family = AF_UNIX;
+            std::strcpy(address.sun_path, socketPath().c_str());
+            ASSERT_EQ(connect(fd, reinterpret_cast<sockaddr *>(&address), sizeof(address)), 0) << strerror(errno);
+            std::string line = message + "\n";
+            ASSERT_EQ(write(fd, line.data(), line.size()), line.size());
+            close(fd);
         }
 
         // Waits until reboot() was called the expected number of times, but at most 2 seconds.
@@ -71,7 +77,7 @@ class DaemonTest : public ::testing::Test
 
 TEST_F(DaemonTest, ReceivedMessageIsDispatched)
 {
-    Daemon daemon(watchdog, receiver, dispatcher, usb_monitor);
+    Daemon daemon(watchdog, socket_server, dispatcher, usb_monitor);
     daemon.start();
 
     send("reboot");
@@ -81,7 +87,7 @@ TEST_F(DaemonTest, ReceivedMessageIsDispatched)
 
 TEST_F(DaemonTest, SeveralMessagesAreDispatched)
 {
-    Daemon daemon(watchdog, receiver, dispatcher, usb_monitor);
+    Daemon daemon(watchdog, socket_server, dispatcher, usb_monitor);
     daemon.start();
 
     send("reboot");
@@ -93,7 +99,7 @@ TEST_F(DaemonTest, SeveralMessagesAreDispatched)
 
 TEST_F(DaemonTest, NoMessagesAreDispatchedAfterStop)
 {
-    Daemon daemon(watchdog, receiver, dispatcher, usb_monitor);
+    Daemon daemon(watchdog, socket_server, dispatcher, usb_monitor);
     daemon.start();
     daemon.stop();
 
@@ -107,7 +113,7 @@ TEST_F(DaemonTest, StopEndsAllThreadsQuickly)
 {
     auto begin = std::chrono::steady_clock::now();
     {
-        Daemon daemon(watchdog, receiver, dispatcher, usb_monitor);
+        Daemon daemon(watchdog, socket_server, dispatcher, usb_monitor);
         daemon.start();
         std::this_thread::sleep_for(50ms); // the watchdog thread is now waiting for its next check
         daemon.stop();
@@ -119,7 +125,7 @@ TEST_F(DaemonTest, StopEndsAllThreadsQuickly)
 
 TEST_F(DaemonTest, StopWithoutStartIsHarmless)
 {
-    Daemon daemon(watchdog, receiver, dispatcher, usb_monitor);
+    Daemon daemon(watchdog, socket_server, dispatcher, usb_monitor);
     daemon.stop();
     daemon.stop();
 }
@@ -131,7 +137,7 @@ TEST_F(DaemonTest, SighupReloadsAndSigtermStops)
     pthread_sigmask(SIG_SETMASK, nullptr, &old_mask);
     Daemon::blockSignals();
 
-    Daemon daemon(watchdog, receiver, dispatcher, usb_monitor);
+    Daemon daemon(watchdog, socket_server, dispatcher, usb_monitor);
     daemon.start();
 
     // raise() sends the signal to this thread, where it stays pending until sigwait() takes it

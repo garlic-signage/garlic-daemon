@@ -16,15 +16,36 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *************************************************************************************/
 
+#include <pwd.h>
+#include <unistd.h>
 #include "cmd_parser.hpp"
 #include "configuration.hpp"
 #include "daemon.hpp"
+#include "local_socket_server.hpp"
 #include "log.hpp"
 #include "message_dispatcher.hpp"
 #include "usb_actions.hpp"
 #include "usb_content_handler.hpp"
 #include "usb_monitor.hpp"
 #include "watchdog.hpp"
+
+/**
+ * The user that may connect to the socket besides root: Player.user when the
+ * daemon runs as root, otherwise the user of the daemon (e.g. during development).
+ */
+static uid_t playerUid(const Configuration &configuration)
+{
+    if (getuid() != 0)
+        return getuid();
+
+    passwd *pw = getpwnam(configuration.getPlayerUser().c_str());
+    if (pw == nullptr)
+    {
+        LOG_WARNING("User ", configuration.getPlayerUser(), " does not exist, only root may connect to the socket.");
+        return 0;
+    }
+    return pw->pw_uid;
+}
 
 int main(int argc, char **argv)
 {
@@ -44,14 +65,14 @@ int main(int argc, char **argv)
 
         SystemActions system_actions;
         Watchdog watchdog(configuration, system_actions);
-        IPCMessageReceiver receiver(configuration.getMessageQueue());
+        LocalSocketServer socket_server(configuration.getSocketPath(), playerUid(configuration));
         MessageDispatcher dispatcher(system_actions, watchdog);
 
         UsbActions usb_actions; // stub, see usb_actions.hpp
         UsbContentHandler usb_content_handler(configuration, usb_actions);
         UsbMonitor usb_monitor(configuration, system_actions, usb_content_handler);
 
-        Daemon daemon(watchdog, receiver, dispatcher, usb_monitor);
+        Daemon daemon(watchdog, socket_server, dispatcher, usb_monitor);
         daemon.start();
         daemon.waitForTerminationSignal(); // blocks until SIGINT or SIGTERM
 

@@ -126,6 +126,8 @@ All messages go to the journal: `journalctl -u garlic-daemon`
 | `USB device … has unsupported filesystem …` | stick not mounted, e.g. encrypted or swap |
 | `Cannot mount … to …` | mount failed, e.g. damaged filesystem |
 | `Not implemented yet: …` | stub of a USB action, see above |
+| `Client connected.` / `Client disconnected.` | player (or another client) connected to the socket |
+| `Rejected connection from uid …` | a user other than `Player.user` or root tried to connect |
 
 ## Requirements
 
@@ -161,6 +163,7 @@ With `-DCMAKE_INSTALL_PREFIX=/usr` this installs:
 | Config                                     | `/etc/garlic-daemon/garlic-daemon.conf`   |
 | systemd unit                               | `/usr/lib/systemd/system/garlic-daemon.service` |
 | State (created by systemd)                 | `/var/lib/garlic-daemon/`                 |
+| Socket (created at runtime)                | `/run/garlic-daemon/garlic-daemon.sock`   |
 
 Without the option the prefix is `/usr/local`, then the config goes to `/usr/local/etc/garlic-daemon/`.
 
@@ -173,7 +176,7 @@ An invalid file ends the daemon with an error message.
 | Value | Default | Meaning |
 |---|---|---|
 | `app_name` | `"garlic-daemon"` | name of the application |
-| `message_queue` | `"/garlic-daemon"` | POSIX message queue for the messages of the player |
+| `socket` | `"/run/garlic-daemon/garlic-daemon.sock"` | Unix socket for the player, see [docs/player-api.md](docs/player-api.md) |
 | `state_dir` | `"/var/lib/garlic-daemon"` | directory for files that must survive a reboot |
 | `Usb.mount_dir` | `"/media/garlic"` | USB sticks are mounted to `<mount_dir>/<device>` |
 | `Usb.firmware_file` | `"garlic-player.zip"` | file name of a player update on the stick |
@@ -188,25 +191,19 @@ Signals: `systemctl stop garlic-daemon` sends SIGTERM, the daemon stops the play
 `systemctl reload garlic-daemon` sends SIGHUP, which is only logged so far.
 To apply a changed config, restart the daemon: `systemctl restart garlic-daemon`.
 
-## Messages
+## Player API
 
-The player sends commands as plain text to the POSIX message queue `/garlic-daemon`
-(configurable with `message_queue`):
-
-| Message       | Action                     |
-|---------------|----------------------------|
-| `heartbeat`   | player is alive, see Watchdog |
-| `reboot`      | syncs the disks and reboots |
-| `install_app` | not implemented yet        |
-| `remove_app`  | not implemented yet        |
-
-Example: `mq_open("/garlic-daemon", O_WRONLY)` and `mq_send(mq, "reboot", 6, 0)`.
+The player talks to the daemon over the Unix socket `/run/garlic-daemon/garlic-daemon.sock`,
+one message per line, e.g. `heartbeat` or `reboot`.
+Everything the player needs (connection, messages, heartbeat, signals, USB paths, Qt example)
+is described in [docs/player-api.md](docs/player-api.md).
 
 ## Source code
 
 - `src/`: all classes, `main.cpp` only wires them together
 - `tests/`: one GoogleTest file per class
 - `resource/`: config file and systemd unit template
+- `docs/`: further documentation, e.g. the player API
 - Rules for the code: see `CONVENTIONS.md`
 
 ## License

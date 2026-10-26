@@ -36,8 +36,8 @@ set(SOURCE_FILES
     src/usb_content_handler.cpp
     src/usb_monitor.hpp
     src/usb_monitor.cpp
-    src/ipc_message_receiver.hpp
-    src/ipc_message_receiver.cpp
+    src/local_socket_server.hpp
+    src/local_socket_server.cpp
     src/log.hpp)
 
 add_library(garlic-core STATIC ${SOURCE_FILES})

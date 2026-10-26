@@ -35,7 +35,7 @@ class Configuration
         void readLibConfigValues(const libconfig::Config *config);
 
         [[nodiscard]] std::string getAppName() const;
-        [[nodiscard]] std::string getMessageQueue() const;
+        [[nodiscard]] std::string getSocketPath() const;
         [[nodiscard]] std::string getStateDir() const;
         [[nodiscard]] std::string getPlayerName() const;
         [[nodiscard]] std::string getPlayerCommand() const;
@@ -48,7 +48,7 @@ class Configuration
 
     private:
         const std::string APP_NAME          = "garlic-daemon";
-        const std::string MESSAGE_QUEUE     = "/garlic-daemon";
+        const std::string SOCKET_PATH       = "/run/garlic-daemon/garlic-daemon.sock";
         const std::string STATE_DIR         = "/var/lib/garlic-daemon";
         const std::string PLAYER_NAME       = "garlic-player";
         const std::string PLAYER_COMMAND    = "/opt/garlic-player/garlic.sh";
@@ -59,7 +59,7 @@ class Configuration
         const std::string USB_FIRMWARE_FILE = "garlic-player.zip";
 
         std::string app_name       = APP_NAME;
-        std::string message_queue  = MESSAGE_QUEUE;
+        std::string socket_path    = SOCKET_PATH;
         std::string state_dir      = STATE_DIR;
         std::string player_name    = PLAYER_NAME;
         std::string player_command = PLAYER_COMMAND;

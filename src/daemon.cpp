@@ -35,8 +35,9 @@ sigset_t daemonSignals()
 }
 } // namespace
 
-Daemon::Daemon(Watchdog &watchdog, IPCMessageReceiver &receiver, MessageDispatcher &dispatcher, UsbMonitor &usb_monitor)
-    : watchdog(watchdog), receiver(receiver), dispatcher(dispatcher), usb_monitor(usb_monitor)
+Daemon::Daemon(Watchdog &watchdog, LocalSocketServer &socket_server, MessageDispatcher &dispatcher,
+               UsbMonitor &usb_monitor)
+    : watchdog(watchdog), socket_server(socket_server), dispatcher(dispatcher), usb_monitor(usb_monitor)
 {
 }
 
@@ -50,7 +51,7 @@ Daemon::~Daemon()
 
 void Daemon::start()
 {
-    receiver.startIPCReceiver();
+    socket_server.start();
     watchdog_thread = std::jthread([this](std::stop_token stop_token) { loopWatchdog(stop_token); });
     listener_thread = std::jthread([this] { loopMessageListener(); });
     usb_thread      = std::jthread([this](std::stop_token stop_token) { usb_monitor.run(stop_token); });
@@ -58,11 +59,11 @@ void Daemon::start()
 
 /**
  * The listener thread ends because waitForMessage() returns false
- * after the receiver was stopped.
+ * after the socket server was stopped.
  */
 void Daemon::stop()
 {
-    receiver.stopIPCReceiver();
+    socket_server.stop();
     watchdog_thread.request_stop();
     usb_thread.request_stop();
 }
@@ -116,12 +117,12 @@ void Daemon::loopWatchdog(std::stop_token stop_token)
 void Daemon::loopMessageListener()
 {
     std::string message;
-    while (receiver.waitForMessage(message))
+    while (socket_server.waitForMessage(message))
     {
         if (message != "heartbeat") // comes every few seconds and would flood the log
-            std::cout << "Received message from queue: " << message << std::endl;
+            std::cout << "Received message: " << message << std::endl;
 
         dispatcher.dispatch(message);
     }
-    std::cout << "Finish message queue listener thread." << std::endl;
+    std::cout << "Finish message listener thread." << std::endl;
 }

@@ -48,7 +48,7 @@ TEST(Configuration, DefaultValues)
     Configuration configuration;
 
     EXPECT_EQ(configuration.getAppName(), "garlic-daemon");
-    EXPECT_EQ(configuration.getMessageQueue(), "/garlic-daemon");
+    EXPECT_EQ(configuration.getSocketPath(), "/run/garlic-daemon/garlic-daemon.sock");
     EXPECT_EQ(configuration.getStateDir(), "/var/lib/garlic-daemon");
     EXPECT_EQ(configuration.getUsbMountDir(), "/media/garlic");
     EXPECT_EQ(configuration.getUsbFirmwareFile(), "garlic-player.zip");
@@ -58,7 +58,7 @@ TEST(Configuration, DefaultValues)
 TEST(Configuration, ReadsAllValues)
 {
     Configuration configuration = readConfiguration("app_name = \"my-daemon\";"
-                                                    "message_queue = \"/my-queue\";"
+                                                    "socket = \"/tmp/my.sock\";"
                                                     "state_dir = \"/tmp/state\";"
                                                     "Usb = {"
                                                     "  mount_dir = \"/mnt/usb\";"
@@ -74,7 +74,7 @@ TEST(Configuration, ReadsAllValues)
                                                     "};");
 
     EXPECT_EQ(configuration.getAppName(), "my-daemon");
-    EXPECT_EQ(configuration.getMessageQueue(), "/my-queue");
+    EXPECT_EQ(configuration.getSocketPath(), "/tmp/my.sock");
     EXPECT_EQ(configuration.getPlayerName(), "my-player");
     EXPECT_EQ(configuration.getPlayerCommand(), "/opt/player/start.sh --fullscreen");
     EXPECT_EQ(configuration.getPlayerUser(), "tester");
@@ -114,7 +114,7 @@ TEST(Configuration, ShippedConfigFileIsValid)
     configuration.readLibConfigValues(&config);
 
     EXPECT_EQ(configuration.getAppName(), "garlic-daemon");
-    EXPECT_EQ(configuration.getMessageQueue(), "/garlic-daemon");
+    EXPECT_EQ(configuration.getSocketPath(), "/run/garlic-daemon/garlic-daemon.sock");
     EXPECT_EQ(configuration.getPlayerName(), "garlic-player");
     EXPECT_EQ(configuration.getPlayerCommand(), "/opt/garlic-player/garlic.sh");
     EXPECT_EQ(configuration.getPlayerUser(), "digitalsignage");

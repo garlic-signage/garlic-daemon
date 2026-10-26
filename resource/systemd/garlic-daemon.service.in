@@ -12,6 +12,8 @@ User=root
 SyslogIdentifier=garlic-daemon
 # Creates /var/lib/garlic-daemon (state_dir in the config)
 StateDirectory=garlic-daemon
+# Creates /run/garlic-daemon for the socket
+RuntimeDirectory=garlic-daemon
 
 [Install]
 WantedBy=multi-user.target
