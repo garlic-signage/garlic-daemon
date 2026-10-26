@@ -2,6 +2,13 @@ cmake_minimum_required(VERSION 3.14)
 project(garlic-daemon LANGUAGES CXX)
 set(THIS garlic-daemon)
 
+set (CMAKE_CXX_STANDARD 17)
+
+if (CMAKE_BUILD_TYPE STREQUAL "Release")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s")
+endif ()
+
+# All classes go into a static library, so the daemon and the tests can share them
 set(SOURCE_FILES
     source/configuration.hpp
     source/configuration.cpp
@@ -15,18 +22,22 @@ set(SOURCE_FILES
     source/message_dispatcher.cpp
     source/ipc_message_receiver.hpp
     source/ipc_message_receiver.cpp
-    source/log.hpp
-    source/main.cpp)
+    source/log.hpp)
 
-set (CMAKE_CXX_STANDARD 17)
+add_library(garlic-core STATIC ${SOURCE_FILES})
+target_include_directories(garlic-core PUBLIC source)
+target_link_libraries(garlic-core PUBLIC libconfig++.so)
 
-if (CMAKE_BUILD_TYPE STREQUAL "Release")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s")
+# The daemon itself only consists of main.cpp
+add_executable(${THIS} source/main.cpp)
+target_link_libraries(${THIS} PRIVATE garlic-core)
+
+# Unit tests (disable with -DBUILD_TESTS=OFF)
+option(BUILD_TESTS "Build the unit tests" ON)
+if (BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
 endif ()
-
-add_executable(${THIS} ${SOURCE_FILES})
-
-target_link_libraries(${THIS} libconfig++.so)
 
 # Install the config file
 install(FILES resource/config/garlic-daemon.conf DESTINATION /etc/garlic-daemon)

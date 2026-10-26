@@ -42,10 +42,10 @@ void Configuration::readLibConfigValues(libconfig::Config *config)
             player.lookupValue("name", player_name);
 
         if (player.exists("path"))
-            player.lookupValue("name", player_path);
+            player.lookupValue("path", player_path);
 
         if (player.exists("user"))
-            player.lookupValue("name", player_user);
+            player.lookupValue("user", player_user);
 
     }
     catch (const libconfig::ParseException &e)
