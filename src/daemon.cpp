@@ -21,79 +21,103 @@
 #include <csignal>
 #include "log.hpp"
 
-Daemon::Daemon()
+namespace
 {
-    signal(SIGINT, Daemon::signalHandler);
-    signal(SIGTERM, Daemon::signalHandler);
-    signal(SIGHUP, Daemon::signalHandler);
+/// The signals the daemon reacts to
+sigset_t daemonSignals()
+{
+    sigset_t signals;
+    sigemptyset(&signals);
+    sigaddset(&signals, SIGINT);
+    sigaddset(&signals, SIGTERM);
+    sigaddset(&signals, SIGHUP);
+    return signals;
+}
+} // namespace
+
+Daemon::Daemon(Watchdog &watchdog, IPCMessageReceiver &receiver, MessageDispatcher &dispatcher)
+    : watchdog(watchdog), receiver(receiver), dispatcher(dispatcher)
+{
 }
 
-Daemon &Daemon::instance()
+/**
+ * Stops the threads. They are joined afterwards by the std::jthread destructors.
+ */
+Daemon::~Daemon()
 {
-    static Daemon instance;
-    return instance;
+    stop();
 }
 
-void Daemon::startWatchdog(Watchdog *MyWatchdog)
+void Daemon::start()
 {
+    receiver.startIPCReceiver();
+    watchdog_thread = std::jthread([this](std::stop_token stop_token) { loopWatchdog(stop_token); });
+    listener_thread = std::jthread([this] { loopMessageListener(); });
+}
 
-    while (is_running.load())
+/**
+ * The listener thread ends because waitForMessage() returns false
+ * after the receiver was stopped.
+ */
+void Daemon::stop()
+{
+    receiver.stopIPCReceiver();
+    watchdog_thread.request_stop();
+}
+
+void Daemon::reload()
+{
+    // ToDo: reread the configuration
+    LOG_INFO("Reload called.");
+}
+
+void Daemon::blockSignals()
+{
+    sigset_t signals = daemonSignals();
+    pthread_sigmask(SIG_BLOCK, &signals, nullptr);
+}
+
+void Daemon::waitForTerminationSignal()
+{
+    sigset_t signals = daemonSignals();
+    while (true)
     {
-        if (is_reload.load())
+        int signal_number = 0;
+        if (sigwait(&signals, &signal_number) != 0)
+            continue;
+
+        LOG_INFO("Signal number [", signal_number, "] received.");
+        if (signal_number == SIGHUP)
         {
-            instance().is_reload.store(false);
-            LOG_INFO("Reload called.");
+            reload();
+            continue;
         }
 
-        MyWatchdog->check();
+        stop();
+        return;
+    }
+}
 
-        // This is more elegant than std::this_thread::sleep_for(std::chrono::seconds(3));
-        // as now we ar eavbleto interupt the waiting process
-        std::mutex mtx;
-        std::unique_lock<std::mutex> lock(mtx);
-        cv.wait_for(lock, std::chrono::seconds(WATCHDOG_TIMER), [] { return false; });
+void Daemon::loopWatchdog(std::stop_token stop_token)
+{
+    std::unique_lock<std::mutex> lock(watchdog_mutex);
+    while (!stop_token.stop_requested())
+    {
+        watchdog.check();
+
+        // Like sleep_for(), but returns immediately when a stop is requested
+        watchdog_cv.wait_for(lock, stop_token, std::chrono::seconds(WATCHDOG_TIMER), [] { return false; });
     }
     std::cout << "Finish watchdog thread." << std::endl;
 }
 
-void Daemon::setIPC(IPCMessageReceiver *ipc)
+void Daemon::loopMessageListener()
 {
-    MyIPCMessageReceiver = ipc;
-}
-
-void Daemon::setMessageDispatcher(MessageDispatcher *dispatcher)
-{
-    MyMessageDispatcher = dispatcher;
-}
-
-void Daemon::startMessageListener()
-{
-    while (is_running.load())
+    std::string message;
+    while (receiver.waitForMessage(message))
     {
-        std::string message;
-        if (!MyIPCMessageReceiver->waitForMessage(message))
-            break; // receiver was stopped
-
         std::cout << "Received message from queue: " << message << std::endl;
-        MyMessageDispatcher->dispatch(message);
+        dispatcher.dispatch(message);
     }
     std::cout << "Finish message queue listener thread." << std::endl;
-}
-
-void Daemon::signalHandler(int signal)
-{
-    LOG_INFO("Interrup signal number [", signal, "] recived.");
-    switch (signal)
-    {
-        case SIGINT:
-        case SIGTERM:
-        case SIGKILL:
-            instance().is_running.store(false);
-            instance().cv.notify_all();
-            instance().MyIPCMessageReceiver->stopIPCReceiver();
-            break;
-        case SIGHUP:
-            instance().is_reload.store(true);
-            break;
-    }
 }

@@ -170,6 +170,19 @@ TEST_F(IPCMessageReceiverTest, WaitForMessageAfterStopReturnsFalse)
     EXPECT_FALSE(receiver.waitForMessage(message));
 }
 
+TEST_F(IPCMessageReceiverTest, WaitForMessageAfterStopIgnoresQueuedMessages)
+{
+    IPCMessageReceiver receiver(queue_name);
+    receiver.startIPCReceiver();
+
+    send("reboot");
+    std::this_thread::sleep_for(std::chrono::milliseconds(300)); // message is now queued
+    receiver.stopIPCReceiver();
+
+    std::string message;
+    EXPECT_FALSE(receiver.waitForMessage(message));
+}
+
 TEST_F(IPCMessageReceiverTest, StopRightAfterStartIsSafe)
 {
     auto begin = std::chrono::steady_clock::now();

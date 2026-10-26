@@ -18,16 +18,7 @@
 
 #include <gtest/gtest.h>
 #include "message_dispatcher.hpp"
-
-// Replaces the real system calls, so the test machine is not rebooted.
-// It only counts how often each action was called.
-class FakeSystemActions : public SystemActions
-{
-    public:
-        int reboot_calls = 0;
-
-        void reboot() override { reboot_calls++; }
-};
+#include "fake_system_actions.hpp"
 
 TEST(MessageDispatcher, RebootMessageCallsReboot)
 {

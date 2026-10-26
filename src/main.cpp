@@ -51,20 +51,17 @@ int main(int argc, char **argv)
     try
     {
 
-        Watchdog MyWatchdog;
-        IPCMessageReceiver MyIPCMessageReceiver("/garlic-daemon");
-        MyIPCMessageReceiver.startIPCReceiver();
-        SystemActions MySystemActions;
-        MessageDispatcher MyMessageDispatcher(MySystemActions);
+        // Must happen before any thread is started, so all threads inherit the blocked signals
+        Daemon::blockSignals();
 
-        Daemon &MyDaemon = Daemon::instance(); // The Daemon class is a singleton to avoid be instantiate more than once
-        MyDaemon.setIPC(&MyIPCMessageReceiver);
-        MyDaemon.setMessageDispatcher(&MyMessageDispatcher);
-        std::thread WatchdogThread(&Daemon::startWatchdog, &Daemon::instance(), &MyWatchdog);
-        std::thread MessageQueueThread(&Daemon::startMessageListener, &Daemon::instance());
-        WatchdogThread.join();
-        MessageQueueThread.join();
-        MyIPCMessageReceiver.stopIPCReceiver();
+        Watchdog watchdog;
+        IPCMessageReceiver receiver("/garlic-daemon");
+        SystemActions system_actions;
+        MessageDispatcher dispatcher(system_actions);
+
+        Daemon daemon(watchdog, receiver, dispatcher);
+        daemon.start();
+        daemon.waitForTerminationSignal(); // blocks until SIGINT or SIGTERM
 
         LOG_INFO("The daemon process ended gracefully.");
     }

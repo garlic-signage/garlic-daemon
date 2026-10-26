@@ -101,13 +101,17 @@ bool IPCMessageReceiver::pollingQueue(std::string &message)
  * Waits until a message enters the queue or the receiver is stopped.
  *
  * @param message
- * @return true when a message was received, false when the receiver was stopped
+ * @return true when a message was received, false when the receiver was stopped.
+ *         After a stop it always returns false.
  */
 bool IPCMessageReceiver::waitForMessage(std::string &message)
 {
     std::unique_lock<std::mutex> lock(mtx);
-    // Returns false when a stop was requested and the queue is still empty
-    if (!cv.wait(lock, receiver_thread.get_stop_token(), [this] { return !queue.empty(); }))
+    std::stop_token stop_token = receiver_thread.get_stop_token();
+    cv.wait(lock, stop_token, [this] { return !queue.empty(); });
+
+    // After a stop no more messages are handed out, even if some are still queued
+    if (stop_token.stop_requested())
         return false;
 
     message = queue.front();

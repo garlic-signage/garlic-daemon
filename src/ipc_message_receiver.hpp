@@ -43,7 +43,8 @@
  *
  *  2. Waiting for a message
  *      Calling waitForMessage(std::string& message) blocks until a message
- *      is received and returns true. It returns false when the receiver was stopped.
+ *      is received and returns true. It returns false when the receiver was stopped,
+ *      also when messages are still queued.
  *      This is the more resource friendly and preferred way.
  *      Call it only after startIPCReceiver().
  *

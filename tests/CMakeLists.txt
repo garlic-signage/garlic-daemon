@@ -4,6 +4,7 @@ find_package(GTest REQUIRED)
 add_executable(garlic-tests
     test_cmd_parser.cpp
     test_configuration.cpp
+    test_daemon.cpp
     test_ipc_message_receiver.cpp
     test_message_dispatcher.cpp
     test_watchdog.cpp)

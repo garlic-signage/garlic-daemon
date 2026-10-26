@@ -19,36 +19,58 @@
 #ifndef DAEMON_HPP
 #define DAEMON_HPP
 
-#include <atomic>
+#include <condition_variable>
+#include <mutex>
+#include <stop_token>
+#include <thread>
 #include "watchdog.hpp"
 #include "ipc_message_receiver.hpp"
 #include "message_dispatcher.hpp"
 
+/**
+ * Runs the daemon: a watchdog thread that checks the player periodically
+ * and a listener thread that passes received messages to the dispatcher.
+ *
+ * Signals are not handled with a signal handler. Instead blockSignals()
+ * blocks them before any thread is started and waitForTerminationSignal()
+ * receives them synchronously with sigwait().
+ */
 class Daemon
 {
     public:
-        static Daemon &instance();
+        Daemon(Watchdog &watchdog, IPCMessageReceiver &receiver, MessageDispatcher &dispatcher);
+        ~Daemon();
 
-        void startWatchdog(Watchdog *MyWatchdog);
-        void setIPC(IPCMessageReceiver *ipc);
-        void setMessageDispatcher(MessageDispatcher *dispatcher);
-        void startMessageListener();
-        Daemon(Daemon const &)         = delete;
-        void operator=(Daemon const &) = delete;
+        /// Starts the message receiver, the watchdog thread and the listener thread.
+        void start();
 
-    private:
-        const int WATCHDOG_TIMER = 5;
+        /// Stops all threads. Calling it more than once is harmless.
+        void stop();
 
-        std::atomic<bool> is_running{true};
-        std::atomic<bool> is_reload{false};
-        IPCMessageReceiver *MyIPCMessageReceiver;
-        MessageDispatcher *MyMessageDispatcher;
-        std::condition_variable cv;
-
-        Daemon();
+        /// Called on SIGHUP.
         void reload();
 
-        static void signalHandler(int signal);
+        /// Blocks SIGINT, SIGTERM and SIGHUP for the calling thread and all threads started afterwards.
+        /// Must be called in main() before any thread is started.
+        static void blockSignals();
+
+        /// Waits for signals: SIGHUP calls reload(), SIGINT and SIGTERM call stop() and return.
+        void waitForTerminationSignal();
+
+    private:
+        static constexpr int WATCHDOG_TIMER = 5; // seconds between two watchdog checks
+
+        Watchdog &watchdog;
+        IPCMessageReceiver &receiver;
+        MessageDispatcher &dispatcher;
+
+        std::mutex watchdog_mutex;
+        std::condition_variable_any watchdog_cv;
+        std::jthread watchdog_thread; // threads are the last members, so they are destroyed first
+        std::jthread listener_thread;
+
+        void loopWatchdog(std::stop_token stop_token);
+        void loopMessageListener();
 };
 
 #endif // DAEMON_HPP
