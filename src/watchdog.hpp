@@ -33,6 +33,11 @@
  * check() is called periodically by the Daemon, heartbeat() whenever the
  * player sends a "heartbeat" message. All methods are thread safe.
  *
+ * Backoff: when the player ends again within STABLE_RUNTIME after its start,
+ * the next start is delayed. The delay doubles with every crash in a row
+ * (5, 10, 20 ... seconds) up to BACKOFF_MAX. A player that ran longer than
+ * STABLE_RUNTIME is restarted without delay.
+ *
  * The player gets its own process group, so stopping it also stops
  * all processes a start script has started.
  */
@@ -54,6 +59,7 @@ class Watchdog
         void setActivity(bool is_active);
 
         /// Stops the player: SIGTERM, after STOP_TIMEOUT SIGKILL.
+        /// This is no crash, so the next check() starts the player without delay.
         void stopPlayer();
 
         bool isPlayerRunning();
@@ -61,8 +67,14 @@ class Watchdog
         /// Process id of the player or -1 if it is not running.
         pid_t getPlayerPid();
 
+        /// Delay before the next start after crash_count crashes in a row.
+        static std::chrono::seconds restartDelay(int crash_count);
+
     private:
-        static constexpr auto STOP_TIMEOUT = std::chrono::seconds(5);
+        static constexpr auto STOP_TIMEOUT   = std::chrono::seconds(5);
+        static constexpr auto STABLE_RUNTIME = std::chrono::seconds(60);
+        static constexpr auto BACKOFF_START  = std::chrono::seconds(5);
+        static constexpr auto BACKOFF_MAX    = std::chrono::seconds(300);
 
         std::string player_name;
         std::string player_command;
@@ -74,12 +86,16 @@ class Watchdog
         bool is_active   = true;
         pid_t player_pid = -1;
         std::chrono::steady_clock::time_point last_heartbeat;
+        std::chrono::steady_clock::time_point started_at;
+        std::chrono::steady_clock::time_point next_start; // backoff: no start before this time
+        int crash_count = 0;                              // crashes in a row
 
         // The following methods expect that mtx is locked
         void start();
         void stop();
         bool isRunning();
         bool isHanging() const;
+        void playerEnded();
 };
 
 #endif // WATCHDOG_HPP

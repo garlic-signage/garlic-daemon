@@ -91,23 +91,26 @@ TEST_F(WatchdogTest, CheckDoesNotStartSecondPlayer)
     EXPECT_EQ(watchdog.getPlayerPid(), pid);
 }
 
-TEST_F(WatchdogTest, CrashedPlayerIsRestarted)
+TEST_F(WatchdogTest, CrashedPlayerIsRestartedAfterBackoff)
 {
+    // Takes about 5 seconds, the first backoff delay
     Watchdog watchdog(makeConfiguration("command = \"sleep 30\";"));
     watchdog.check();
     pid_t first_pid = watchdog.getPlayerPid();
 
-    kill(first_pid, SIGKILL); // simulates a crash
+    kill(first_pid, SIGKILL); // simulates a crash shortly after the start
     std::this_thread::sleep_for(100ms);
-    EXPECT_FALSE(watchdog.isPlayerRunning());
+    watchdog.check();
+    EXPECT_FALSE(watchdog.isPlayerRunning()); // backoff, no immediate restart
 
+    std::this_thread::sleep_for(5100ms);
     watchdog.check();
 
     EXPECT_TRUE(watchdog.isPlayerRunning());
     EXPECT_NE(watchdog.getPlayerPid(), first_pid);
 }
 
-TEST_F(WatchdogTest, HangingPlayerIsRestarted)
+TEST_F(WatchdogTest, HangingPlayerIsStopped)
 {
     Watchdog watchdog(makeConfiguration("command = \"sleep 30\"; heartbeat_timeout = 1;"));
     watchdog.check();
@@ -116,9 +119,33 @@ TEST_F(WatchdogTest, HangingPlayerIsRestarted)
     std::this_thread::sleep_for(1200ms); // no heartbeat
     watchdog.check();
 
-    EXPECT_TRUE(watchdog.isPlayerRunning());
-    EXPECT_NE(watchdog.getPlayerPid(), first_pid);
+    // The hang counts like a crash, so the restart comes after the backoff, see test above
     EXPECT_FALSE(processExists(first_pid));
+    EXPECT_FALSE(watchdog.isPlayerRunning());
+}
+
+TEST_F(WatchdogTest, StoppedPlayerIsStartedWithoutDelay)
+{
+    Watchdog watchdog(makeConfiguration("command = \"sleep 30\";"));
+    watchdog.check();
+
+    watchdog.stopPlayer(); // e.g. for an update, this is no crash
+    watchdog.check();
+
+    EXPECT_TRUE(watchdog.isPlayerRunning());
+}
+
+TEST(Watchdog, RestartDelayDoublesUpToMaximum)
+{
+    EXPECT_EQ(Watchdog::restartDelay(0), 0s);
+    EXPECT_EQ(Watchdog::restartDelay(1), 5s);
+    EXPECT_EQ(Watchdog::restartDelay(2), 10s);
+    EXPECT_EQ(Watchdog::restartDelay(3), 20s);
+    EXPECT_EQ(Watchdog::restartDelay(4), 40s);
+    EXPECT_EQ(Watchdog::restartDelay(5), 80s);
+    EXPECT_EQ(Watchdog::restartDelay(6), 160s);
+    EXPECT_EQ(Watchdog::restartDelay(7), 300s); // maximum
+    EXPECT_EQ(Watchdog::restartDelay(1000), 300s);
 }
 
 TEST_F(WatchdogTest, HeartbeatKeepsPlayerRunning)

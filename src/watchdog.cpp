@@ -53,10 +53,16 @@ void Watchdog::check()
     {
         LOG_WARNING(player_name, " sent no heartbeat for ", heartbeat_timeout.count(), " seconds, restart it.");
         stop();
+        playerEnded(); // a hang counts like a crash
     }
 
-    if (!isRunning())
-        start();
+    if (isRunning())
+        return;
+
+    if (std::chrono::steady_clock::now() < next_start) // backoff after crashes
+        return;
+
+    start();
 }
 
 void Watchdog::heartbeat()
@@ -75,6 +81,8 @@ void Watchdog::stopPlayer()
 {
     std::lock_guard<std::mutex> lock(mtx);
     stop();
+    crash_count = 0;
+    next_start  = {};
 }
 
 bool Watchdog::isPlayerRunning()
@@ -87,6 +95,16 @@ pid_t Watchdog::getPlayerPid()
 {
     std::lock_guard<std::mutex> lock(mtx);
     return isRunning() ? player_pid : -1;
+}
+
+std::chrono::seconds Watchdog::restartDelay(int crash_count)
+{
+    if (crash_count <= 0)
+        return std::chrono::seconds(0);
+
+    // 5, 10, 20, 40 ... seconds; the shift is limited, so it cannot overflow
+    auto delay = BACKOFF_START * (1 << std::min(crash_count - 1, 10));
+    return std::min<std::chrono::seconds>(delay, BACKOFF_MAX);
 }
 
 /**
@@ -177,7 +195,8 @@ void Watchdog::start()
     setpgid(pid, pid);
 
     player_pid     = pid;
-    last_heartbeat = std::chrono::steady_clock::now(); // the startup time counts like a heartbeat
+    started_at     = std::chrono::steady_clock::now();
+    last_heartbeat = started_at; // the startup time counts like a heartbeat
     LOG_INFO("Started ", player_name, " with pid ", pid, ": ", player_command);
 }
 
@@ -233,6 +252,7 @@ bool Watchdog::isRunning()
     }
     kill(-player_pid, SIGKILL); // processes of a start script that are still left
     player_pid = -1;
+    playerEnded();
     return false;
 }
 
@@ -242,4 +262,21 @@ bool Watchdog::isHanging() const
         return false;
 
     return std::chrono::steady_clock::now() - last_heartbeat > heartbeat_timeout;
+}
+
+/**
+ * Called when the player has crashed or hung. Calculates when it may be started again.
+ */
+void Watchdog::playerEnded()
+{
+    auto now = std::chrono::steady_clock::now();
+    if (now - started_at < STABLE_RUNTIME)
+        crash_count++;
+    else
+        crash_count = 0; // it ran long enough, so this is no crash loop
+
+    next_start = now + restartDelay(crash_count);
+    if (crash_count > 0)
+        LOG_WARNING(player_name, " crashed ", crash_count, " times in a row, next start in ",
+                    restartDelay(crash_count).count(), " seconds.");
 }
