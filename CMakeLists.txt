@@ -1,8 +1,16 @@
-cmake_minimum_required(VERSION 3.14)
+# 3.20 is the first version that knows CMAKE_CXX_STANDARD 23
+cmake_minimum_required(VERSION 3.20)
 project(garlic-daemon LANGUAGES CXX)
 set(THIS garlic-daemon)
 
-set (CMAKE_CXX_STANDARD 17)
+# C++23 without GNU extensions, minimum compiler is GCC 14, see CONVENTIONS.md
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+if (NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_VERSION VERSION_LESS 14)
+    message(FATAL_ERROR "GCC 14 or newer is required, found ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
+endif ()
 
 if (CMAKE_BUILD_TYPE STREQUAL "Release")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s")

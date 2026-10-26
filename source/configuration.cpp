@@ -18,10 +18,7 @@
 
 #include "configuration.hpp"
 
-Configuration::Configuration()
-{
-
-}
+Configuration::Configuration() {}
 
 void Configuration::readLibConfigValues(libconfig::Config *config)
 {
@@ -36,7 +33,7 @@ void Configuration::readLibConfigValues(libconfig::Config *config)
         if (!config->exists("Player"))
             return;
 
-        libconfig::Setting& player = config->lookup("Player");
+        libconfig::Setting &player = config->lookup("Player");
 
         if (player.exists("name"))
             player.lookupValue("name", player_name);
@@ -46,7 +43,6 @@ void Configuration::readLibConfigValues(libconfig::Config *config)
 
         if (player.exists("user"))
             player.lookupValue("user", player_user);
-
     }
     catch (const libconfig::ParseException &e)
     {

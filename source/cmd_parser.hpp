@@ -29,15 +29,15 @@
 class CmdParser
 {
     public:
-        CmdParser(int argc, char** argv);
+        CmdParser(int argc, char **argv);
         bool checkForConfigOption();
-        std::string getConfileFilePath();
+        std::string getConfigFilePath();
+
     private:
         std::string configFileName;
         std::vector<std::string> m_tokens;
-        const std::string& getCmdOptionValue(const std::string& option) const;
-        bool cmdOptionExist(const std::string& option) const;
-
+        const std::string &getCmdOptionValue(const std::string &option) const;
+        bool cmdOptionExist(const std::string &option) const;
 };
 
-#endif  // COMMAND_LINE_PARSER_HPP
+#endif // COMMAND_LINE_PARSER_HPP

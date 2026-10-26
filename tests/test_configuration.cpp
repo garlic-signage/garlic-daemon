@@ -34,13 +34,12 @@ TEST(Configuration, DefaultValues)
 TEST(Configuration, ReadsAllValues)
 {
     libconfig::Config config;
-    config.readString(
-        "app_name = \"my-daemon\";"
-        "Player = {"
-        "  name = \"my-player\";"
-        "  path = \"/opt/player/\";"
-        "  user = \"tester\";"
-        "};");
+    config.readString("app_name = \"my-daemon\";"
+                      "Player = {"
+                      "  name = \"my-player\";"
+                      "  path = \"/opt/player/\";"
+                      "  user = \"tester\";"
+                      "};");
 
     Configuration configuration;
     configuration.readLibConfigValues(&config);

@@ -37,7 +37,7 @@ bool CmdParser::checkForConfigOption()
     return true;
 }
 
-std::string CmdParser::getConfileFilePath()
+std::string CmdParser::getConfigFilePath()
 {
     return configFileName;
 }
@@ -49,7 +49,7 @@ const std::string &CmdParser::getCmdOptionValue(const std::string &option) const
     {
         return *it;
     }
-    static const std::string emptyString("");
+    static const std::string emptyString;
     return emptyString;
 }
 

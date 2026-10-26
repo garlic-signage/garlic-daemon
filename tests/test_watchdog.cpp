@@ -22,7 +22,7 @@
 #include "watchdog.hpp"
 
 namespace fs = std::filesystem;
-using namespace std::string_literals;  // "..."s keeps embedded '\0'
+using namespace std::string_literals; // "..."s keeps embedded '\0'
 
 // Every test gets its own empty fake /proc directory, which is removed afterwards.
 class WatchdogTest : public ::testing::Test
@@ -33,13 +33,10 @@ class WatchdogTest : public ::testing::Test
         void SetUp() override
         {
             char dir_template[] = "/tmp/garlic-test-proc-XXXXXX";
-            proc_dir = mkdtemp(dir_template);
+            proc_dir            = mkdtemp(dir_template);
         }
 
-        void TearDown() override
-        {
-            fs::remove_all(proc_dir);
-        }
+        void TearDown() override { fs::remove_all(proc_dir); }
 
         // Creates <proc_dir>/<entry>/cmdline. Like in the real /proc,
         // arguments in cmdline are separated by '\0'.
@@ -84,8 +81,8 @@ TEST_F(WatchdogTest, FindsPlayerWithoutPath)
 TEST_F(WatchdogTest, OtherProcessesAreIgnored)
 {
     addProcess("1", "/sbin/init");
-    addProcess("2", "/usr/bin/garlic-player-helper");  // only the exact name counts
-    addProcess("3", "");                               // kernel threads have an empty cmdline
+    addProcess("2", "/usr/bin/garlic-player-helper"); // only the exact name counts
+    addProcess("3", "");                              // kernel threads have an empty cmdline
     Watchdog watchdog(proc_dir);
 
     EXPECT_FALSE(watchdog.isPlayerRunning());

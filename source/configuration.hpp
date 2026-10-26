@@ -26,7 +26,7 @@ class Configuration
 {
     public:
         Configuration();
-        void readLibConfigValues(libconfig::Config  *config);
+        void readLibConfigValues(libconfig::Config *config);
 
         std::string getAppName() const;
         std::string getPlayerName() const;

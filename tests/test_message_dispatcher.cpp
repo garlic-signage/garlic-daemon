@@ -57,8 +57,8 @@ TEST(MessageDispatcher, UnknownMessagesDoNotReboot)
 
     dispatcher.dispatch("");
     dispatcher.dispatch("unknown");
-    dispatcher.dispatch("Reboot");   // commands are case-sensitive
-    dispatcher.dispatch("reboot ");  // no trimming of whitespace
+    dispatcher.dispatch("Reboot");  // commands are case-sensitive
+    dispatcher.dispatch("reboot "); // no trimming of whitespace
 
     EXPECT_EQ(system_actions.reboot_calls, 0);
 }

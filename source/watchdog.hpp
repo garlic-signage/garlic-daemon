@@ -31,7 +31,6 @@
 #include <stdio.h>
 #include <thread>
 
-
 using namespace std;
 
 /**
@@ -48,9 +47,10 @@ class Watchdog
         void check();
         void startPlayer();
         void killZombieProcesses();
+
     private:
         string proc_path;
-        string player_name    = "garlic-player";
+        string player_name               = "garlic-player";
         string path_to_player_executable = "/opt/garlic-player/garlic.sh";
         int getPlayerProcId();
         bool isInCmdLine(string dir_name);

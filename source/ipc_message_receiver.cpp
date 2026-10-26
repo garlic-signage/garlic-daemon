@@ -29,7 +29,7 @@
 IPCMessageReceiver::IPCMessageReceiver(const std::string &name)
 {
     message_queue_name = name;
-    mq = mq_open(message_queue_name.c_str(), O_RDWR | O_CREAT, 0644, nullptr);
+    mq                 = mq_open(message_queue_name.c_str(), O_RDWR | O_CREAT, 0644, nullptr);
     if (mq == (mqd_t)-1)
     {
         throw std::runtime_error("Unable to open message queue");
@@ -111,7 +111,7 @@ void IPCMessageReceiver::stopIPCReceiver()
  * @param message
  * @return bool
  */
-bool IPCMessageReceiver::pollingQueue(std::string& message)
+bool IPCMessageReceiver::pollingQueue(std::string &message)
 {
     std::unique_lock<std::mutex> lock(mtx);
     if (queue.empty())
@@ -129,10 +129,10 @@ bool IPCMessageReceiver::pollingQueue(std::string& message)
  *
  * @param message
  */
-void IPCMessageReceiver::waitForMessage(std::string& message)
+void IPCMessageReceiver::waitForMessage(std::string &message)
 {
     std::unique_lock<std::mutex> lock(mtx);
-    cv.wait(lock, [this]{ return !queue.empty()  || !running.load(); });
+    cv.wait(lock, [this] { return !queue.empty() || !running.load(); });
     message = queue.front();
     queue.pop();
 }

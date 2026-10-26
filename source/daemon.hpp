@@ -30,7 +30,7 @@
 class Daemon
 {
     public:
-        static Daemon& instance();
+        static Daemon &instance();
 
         void startWatchdog(Watchdog *MyWatchdog);
         void setIPC(IPCMessageReceiver *ipc);
@@ -38,7 +38,6 @@ class Daemon
         void startMessageListener();
 
     private:
-
         const int WATCHDOG_TIMER = 5;
 
         std::atomic<bool> is_running{true};
@@ -48,11 +47,11 @@ class Daemon
         std::condition_variable cv;
 
         Daemon();
-        Daemon(Daemon const&) = delete;
-        void operator=(Daemon const&) = delete;
+        Daemon(Daemon const &)         = delete;
+        void operator=(Daemon const &) = delete;
         void reload();
 
         static void signalHandler(int signal);
 };
 
-#endif  // DAEMON_HPP
+#endif // DAEMON_HPP

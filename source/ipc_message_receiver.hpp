@@ -53,17 +53,17 @@ class IPCMessageReceiver
 {
 
     public:
-        IPCMessageReceiver(const std::string& name);
+        IPCMessageReceiver(const std::string &name);
         ~IPCMessageReceiver();
         void loopIPCReceiver();
         void startIPCReceiver();
         void stopIPCReceiver();
-        bool pollingQueue(std::string& message);
-        void waitForMessage(std::string& message);
+        bool pollingQueue(std::string &message);
+        void waitForMessage(std::string &message);
 
     private:
         const std::string TERMINATION_MESSAGE = "TERMINATE\0";
-        std::string message_queue_name = "";
+        std::string message_queue_name        = "";
         mqd_t mq;
         std::thread::id receiver_thread_id;
         std::atomic<bool> running;
@@ -71,8 +71,7 @@ class IPCMessageReceiver
         std::queue<std::string> queue;
         std::mutex mtx;
         std::condition_variable cv;
-        void push(const std::string& message);
+        void push(const std::string &message);
 };
-
 
 #endif // IPCMESSAGERECEIVER_HPP

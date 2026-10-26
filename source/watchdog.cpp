@@ -18,10 +18,7 @@
 
 #include "watchdog.hpp"
 
-Watchdog::Watchdog(const string &proc_path) : proc_path(proc_path)
-{
-
-}
+Watchdog::Watchdog(const string &proc_path) : proc_path(proc_path) {}
 
 void Watchdog::setActivity(bool is_active)
 {
@@ -44,9 +41,9 @@ void Watchdog::startPlayer()
 bool Watchdog::isPlayerRunning()
 {
     if (!is_active) // if watchdog is not active return always true
-       return true;
+        return true;
 
-   return (getPlayerProcId() > -1);
+    return (getPlayerProcId() > -1);
 }
 
 int Watchdog::getPlayerProcId()
@@ -63,7 +60,7 @@ int Watchdog::getPlayerProcId()
         int id = atoi(dirp->d_name); // Skip non-numeric entries
         if (id > 0 && isInCmdLine(dirp->d_name))
         {
-           pid = id;
+            pid = id;
         }
     }
     closedir(dp);
@@ -105,12 +102,18 @@ bool Watchdog::isZombie(int pid)
 
     string stat_path = proc_path + "/" + to_string(pid) + "/stat";
 
-    FILE* fpstat = fopen(stat_path.c_str(), "r");
-    if (!fpstat) { perror(stat_path.c_str()); exit(EXIT_FAILURE); };
+    FILE *fpstat = fopen(stat_path.c_str(), "r");
+    if (!fpstat)
     {
-      int rpid =0; char rcmd[32]; char rstatc = 0;
-      fscanf(fpstat, "%d %30s %c", &rpid, rcmd, &rstatc);
-      is_zombie = rstatc == 'Z';
+        perror(stat_path.c_str());
+        exit(EXIT_FAILURE);
+    };
+    {
+        int rpid = 0;
+        char rcmd[32];
+        char rstatc = 0;
+        fscanf(fpstat, "%d %30s %c", &rpid, rcmd, &rstatc);
+        is_zombie = rstatc == 'Z';
     }
 
     fclose(fpstat);

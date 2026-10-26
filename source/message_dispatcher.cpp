@@ -36,9 +36,8 @@ void MessageDispatcher::dispatch(std::string message)
     }
     else
     {
-        std::cerr << "Signale "+message+" is not supported." << std::endl;
+        std::cerr << "Signale " + message + " is not supported." << std::endl;
     }
-
 }
 
 void MessageDispatcher::installApp()

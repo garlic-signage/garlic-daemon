@@ -24,30 +24,31 @@
 #include "configuration.hpp"
 #include "message_dispatcher.hpp"
 
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
     CmdParser MyCmdParser(argc, argv);
     Configuration MyConfiguration;
     if (MyCmdParser.checkForConfigOption())
     {
         libconfig::Config config;
-        config.readFile(MyCmdParser.getConfileFilePath().c_str());
+        config.readFile(MyCmdParser.getConfigFilePath().c_str());
         MyConfiguration.readLibConfigValues(&config);
     }
     std::string lockfile_name = "/tmp/" + MyConfiguration.getAppName() + ".lock";
 
-    #ifdef NDEBUG
-    if(std::filesystem::exists(lockfile_name))
+#ifdef NDEBUG
+    if (std::filesystem::exists(lockfile_name))
     {
-        std:cerr << ("Application is already running!")  << std::endl;
+    std:
+        cerr << ("Application is already running!") << std::endl;
         return 1;
     }
     else
     {
         ofstream file;
-        file.open (lockfile_name);
+        file.open(lockfile_name);
     }
-    #endif
+#endif
     try
     {
 
@@ -57,18 +58,18 @@ int main(int argc, char** argv)
         SystemActions MySystemActions;
         MessageDispatcher MyMessageDispatcher(MySystemActions);
 
-        Daemon& MyDaemon = Daemon::instance(); // The Daemon class is a singleton to avoid be instantiate more than once
+        Daemon &MyDaemon = Daemon::instance(); // The Daemon class is a singleton to avoid be instantiate more than once
         MyDaemon.setIPC(&MyIPCMessageReceiver);
         MyDaemon.setMessageDispatcher(&MyMessageDispatcher);
-        std::thread WatchdogThread(&Daemon::startWatchdog,  &Daemon::instance(), &MyWatchdog);
-        std::thread MessageQueueThread(&Daemon::startMessageListener,  &Daemon::instance());
+        std::thread WatchdogThread(&Daemon::startWatchdog, &Daemon::instance(), &MyWatchdog);
+        std::thread MessageQueueThread(&Daemon::startMessageListener, &Daemon::instance());
         WatchdogThread.join();
         MessageQueueThread.join();
         MyIPCMessageReceiver.stopIPCReceiver();
 
         LOG_INFO("The daemon process ended gracefully.");
     }
-    catch (const std::exception& e)
+    catch (const std::exception &e)
     {
         std::cerr << "Error: " << e.what() << std::endl;
         std::remove(lockfile_name.c_str());

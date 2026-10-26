@@ -23,43 +23,43 @@
 
 TEST(CmdParser, NoArgumentsHasNoConfigOption)
 {
-    char *argv[] = {(char*)"garlic-daemon"};
+    char *argv[] = {(char *)"garlic-daemon"};
     CmdParser parser(1, argv);
 
     EXPECT_FALSE(parser.checkForConfigOption());
-    EXPECT_EQ(parser.getConfileFilePath(), "");
+    EXPECT_EQ(parser.getConfigFilePath(), "");
 }
 
 TEST(CmdParser, ConfigOptionWithValue)
 {
-    char *argv[] = {(char*)"garlic-daemon", (char*)"--config", (char*)"/etc/garlic-daemon/garlic-daemon.conf"};
+    char *argv[] = {(char *)"garlic-daemon", (char *)"--config", (char *)"/etc/garlic-daemon/garlic-daemon.conf"};
     CmdParser parser(3, argv);
 
     EXPECT_TRUE(parser.checkForConfigOption());
-    EXPECT_EQ(parser.getConfileFilePath(), "/etc/garlic-daemon/garlic-daemon.conf");
+    EXPECT_EQ(parser.getConfigFilePath(), "/etc/garlic-daemon/garlic-daemon.conf");
 }
 
 TEST(CmdParser, ConfigOptionBetweenOtherArguments)
 {
-    char *argv[] = {(char*)"garlic-daemon", (char*)"--foo", (char*)"--config", (char*)"my.conf", (char*)"--bar"};
+    char *argv[] = {(char *)"garlic-daemon", (char *)"--foo", (char *)"--config", (char *)"my.conf", (char *)"--bar"};
     CmdParser parser(5, argv);
 
     EXPECT_TRUE(parser.checkForConfigOption());
-    EXPECT_EQ(parser.getConfileFilePath(), "my.conf");
+    EXPECT_EQ(parser.getConfigFilePath(), "my.conf");
 }
 
 TEST(CmdParser, ConfigOptionWithoutValueGivesEmptyPath)
 {
-    char *argv[] = {(char*)"garlic-daemon", (char*)"--config"};
+    char *argv[] = {(char *)"garlic-daemon", (char *)"--config"};
     CmdParser parser(2, argv);
 
     EXPECT_TRUE(parser.checkForConfigOption());
-    EXPECT_EQ(parser.getConfileFilePath(), "");
+    EXPECT_EQ(parser.getConfigFilePath(), "");
 }
 
 TEST(CmdParser, ProgramNameIsNotParsedAsOption)
 {
-    char *argv[] = {(char*)"--config", (char*)"other"};
+    char *argv[] = {(char *)"--config", (char *)"other"};
     CmdParser parser(2, argv);
 
     // argv[0] is skipped, so only "other" is a token

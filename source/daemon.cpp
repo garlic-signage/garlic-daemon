@@ -48,7 +48,7 @@ void Daemon::startWatchdog(Watchdog *MyWatchdog)
         // as now we ar eavbleto interupt the waiting process
         std::mutex mtx;
         std::unique_lock<std::mutex> lock(mtx);
-        cv.wait_for(lock, std::chrono::seconds(WATCHDOG_TIMER), []{ return false; });
+        cv.wait_for(lock, std::chrono::seconds(WATCHDOG_TIMER), [] { return false; });
     }
     std::cout << "Finish watchdog thread." << std::endl;
 }
@@ -67,7 +67,8 @@ void Daemon::startMessageListener()
 {
     while (is_running.load())
     {
-        std:string message;
+    std:
+        string message;
         MyIPCMessageReceiver->waitForMessage(message);
         std::cout << "Received message from queue: " << message << std::endl;
         MyMessageDispatcher->dispatch(message);
