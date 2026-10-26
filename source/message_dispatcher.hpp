@@ -21,14 +21,16 @@
 
 #include <string>
 #include <iostream>
-#include <unistd.h>
-#include <sys/reboot.h>
+#include "system_actions.hpp"
 
+/**
+ * Maps a received message (e.g. "reboot") to the matching action.
+ */
 class MessageDispatcher
 {
 
     public:
-        MessageDispatcher();
+        explicit MessageDispatcher(SystemActions &system_actions);
         void dispatch(std::string message);
 
     private:
@@ -36,7 +38,8 @@ class MessageDispatcher
         const std::string INSTALL_APP = "install_app";
         const std::string REMOVE_APP  = "remove_app";
 
-        void reboot();
+        SystemActions &MySystemActions;
+
         void installApp();
         void removeApp();
 };

@@ -54,7 +54,8 @@ int main(int argc, char** argv)
         Watchdog MyWatchdog;
         IPCMessageReceiver MyIPCMessageReceiver("/garlic-daemon");
         MyIPCMessageReceiver.startIPCReceiver();
-        MessageDispatcher MyMessageDispatcher;
+        SystemActions MySystemActions;
+        MessageDispatcher MyMessageDispatcher(MySystemActions);
 
         Daemon& MyDaemon = Daemon::instance(); // The Daemon class is a singleton to avoid be instantiate more than once
         MyDaemon.setIPC(&MyIPCMessageReceiver);

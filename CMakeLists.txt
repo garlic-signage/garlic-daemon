@@ -20,6 +20,8 @@ set(SOURCE_FILES
     source/daemon.cpp
     source/message_dispatcher.hpp
     source/message_dispatcher.cpp
+    source/system_actions.hpp
+    source/system_actions.cpp
     source/ipc_message_receiver.hpp
     source/ipc_message_receiver.cpp
     source/log.hpp)

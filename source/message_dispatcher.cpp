@@ -18,13 +18,13 @@
 
 #include "message_dispatcher.hpp"
 
-MessageDispatcher::MessageDispatcher() {}
+MessageDispatcher::MessageDispatcher(SystemActions &system_actions) : MySystemActions(system_actions) {}
 
 void MessageDispatcher::dispatch(std::string message)
 {
     if (message == REBOOT)
     {
-        reboot();
+        MySystemActions.reboot();
     }
     else if (message == INSTALL_APP)
     {
@@ -39,12 +39,6 @@ void MessageDispatcher::dispatch(std::string message)
         std::cerr << "Signale "+message+" is not supported." << std::endl;
     }
 
-}
-
-void MessageDispatcher::reboot()
-{
-    sync();
-    ::reboot(RB_AUTOBOOT);
 }
 
 void MessageDispatcher::installApp()
