@@ -49,14 +49,14 @@ class WatchdogTest : public ::testing::Test
 
 TEST_F(WatchdogTest, EmptyProcMeansNotRunning)
 {
-    Watchdog watchdog(proc_dir);
+    Watchdog watchdog(Configuration(), proc_dir);
 
     EXPECT_FALSE(watchdog.isPlayerRunning());
 }
 
 TEST_F(WatchdogTest, MissingProcMeansNotRunning)
 {
-    Watchdog watchdog(proc_dir / "does-not-exist");
+    Watchdog watchdog(Configuration(), proc_dir / "does-not-exist");
 
     EXPECT_FALSE(watchdog.isPlayerRunning());
 }
@@ -65,7 +65,7 @@ TEST_F(WatchdogTest, FindsPlayerWithPathAndArguments)
 {
     addProcess("1", "/sbin/init\0"s);
     addProcess("42", "/opt/garlic-player/garlic-player\0--fullscreen\0"s);
-    Watchdog watchdog(proc_dir);
+    Watchdog watchdog(Configuration(), proc_dir);
 
     EXPECT_TRUE(watchdog.isPlayerRunning());
 }
@@ -73,7 +73,7 @@ TEST_F(WatchdogTest, FindsPlayerWithPathAndArguments)
 TEST_F(WatchdogTest, FindsPlayerWithoutPath)
 {
     addProcess("42", "garlic-player");
-    Watchdog watchdog(proc_dir);
+    Watchdog watchdog(Configuration(), proc_dir);
 
     EXPECT_TRUE(watchdog.isPlayerRunning());
 }
@@ -83,7 +83,7 @@ TEST_F(WatchdogTest, OtherProcessesAreIgnored)
     addProcess("1", "/sbin/init");
     addProcess("2", "/usr/bin/garlic-player-helper"); // only the exact name counts
     addProcess("3", "");                              // kernel threads have an empty cmdline
-    Watchdog watchdog(proc_dir);
+    Watchdog watchdog(Configuration(), proc_dir);
 
     EXPECT_FALSE(watchdog.isPlayerRunning());
 }
@@ -91,14 +91,29 @@ TEST_F(WatchdogTest, OtherProcessesAreIgnored)
 TEST_F(WatchdogTest, NonNumericEntriesAreIgnored)
 {
     addProcess("self", "/opt/garlic-player/garlic-player");
-    Watchdog watchdog(proc_dir);
+    Watchdog watchdog(Configuration(), proc_dir);
 
     EXPECT_FALSE(watchdog.isPlayerRunning());
 }
 
+TEST_F(WatchdogTest, PlayerNameIsTakenFromConfiguration)
+{
+    libconfig::Config config;
+    config.readString("Player = { name = \"my-player\"; };");
+    Configuration configuration;
+    configuration.readLibConfigValues(&config);
+
+    addProcess("42", "/opt/garlic-player/garlic-player");
+    Watchdog watchdog(configuration, proc_dir);
+    EXPECT_FALSE(watchdog.isPlayerRunning());
+
+    addProcess("43", "/usr/bin/my-player");
+    EXPECT_TRUE(watchdog.isPlayerRunning());
+}
+
 TEST_F(WatchdogTest, InactiveWatchdogAlwaysReportsRunning)
 {
-    Watchdog watchdog(proc_dir);
+    Watchdog watchdog(Configuration(), proc_dir);
     watchdog.setActivity(false);
 
     EXPECT_TRUE(watchdog.isPlayerRunning());

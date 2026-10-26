@@ -49,11 +49,14 @@ if (BUILD_TESTS)
     add_subdirectory(tests)
 endif ()
 
-# Install the config file
-install(FILES resource/config/garlic-daemon.conf DESTINATION /etc/garlic-daemon)
+# Installation, the paths follow CMAKE_INSTALL_PREFIX (default /usr/local).
+# For a package use -DCMAKE_INSTALL_PREFIX=/usr, then the config goes to /etc.
+include(GNUInstallDirs)
 
-# Intall the systemd file
-install(FILES resource/systemd/garlic-daemon.service DESTINATION /etc/systemd/system)
+install(TARGETS ${THIS} DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-# Install the binary program
-install(TARGETS ${THIS} DESTINATION /usr/bin)
+install(FILES resource/config/garlic-daemon.conf DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/garlic-daemon)
+
+# The service file gets the real install paths of binary and config
+configure_file(resource/systemd/garlic-daemon.service.in garlic-daemon.service @ONLY)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/garlic-daemon.service DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/system)

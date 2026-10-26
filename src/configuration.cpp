@@ -30,6 +30,9 @@ void Configuration::readLibConfigValues(const libconfig::Config *config)
         if (config->exists("app_name"))
             config->lookupValue("app_name", app_name);
 
+        if (config->exists("message_queue"))
+            config->lookupValue("message_queue", message_queue);
+
         if (!config->exists("Player"))
             return;
 
@@ -53,6 +56,11 @@ void Configuration::readLibConfigValues(const libconfig::Config *config)
 std::string Configuration::getAppName() const
 {
     return app_name;
+}
+
+std::string Configuration::getMessageQueue() const
+{
+    return message_queue;
 }
 
 std::string Configuration::getPlayerName() const

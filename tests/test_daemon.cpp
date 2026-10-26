@@ -33,7 +33,8 @@ class DaemonTest : public ::testing::Test
     protected:
         FakeSystemActions system_actions;
         MessageDispatcher dispatcher{system_actions};
-        Watchdog watchdog;
+        Configuration configuration;
+        Watchdog watchdog{configuration};
         IPCMessageReceiver receiver{uniqueQueueName()};
 
         static std::string uniqueQueueName()

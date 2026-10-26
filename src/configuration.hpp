@@ -22,6 +22,10 @@
 #include <iostream>
 #include <libconfig.h++>
 
+/**
+ * Holds the settings of the daemon. Every value has a default,
+ * which is replaced by the value from the config file if it exists there.
+ */
 class Configuration
 {
     public:
@@ -29,20 +33,23 @@ class Configuration
         void readLibConfigValues(const libconfig::Config *config);
 
         [[nodiscard]] std::string getAppName() const;
+        [[nodiscard]] std::string getMessageQueue() const;
         [[nodiscard]] std::string getPlayerName() const;
         [[nodiscard]] std::string getPlayerPath() const;
         [[nodiscard]] std::string getPlayerUser() const;
 
     private:
-        const std::string APP_NAME    = "garlic-daemon";
-        const std::string PLAYER_NAME = "garlic-player";
-        const std::string PLAYER_PATH = "/usr/local/bin/";
-        const std::string PLAYER_USER = "digitalsignage";
+        const std::string APP_NAME      = "garlic-daemon";
+        const std::string MESSAGE_QUEUE = "/garlic-daemon";
+        const std::string PLAYER_NAME   = "garlic-player";
+        const std::string PLAYER_PATH   = "/usr/local/bin/";
+        const std::string PLAYER_USER   = "digitalsignage";
 
-        std::string app_name    = APP_NAME;
-        std::string player_name = PLAYER_NAME;
-        std::string player_path = PLAYER_PATH;
-        std::string player_user = PLAYER_USER;
+        std::string app_name      = APP_NAME;
+        std::string message_queue = MESSAGE_QUEUE;
+        std::string player_name   = PLAYER_NAME;
+        std::string player_path   = PLAYER_PATH;
+        std::string player_user   = PLAYER_USER;
 };
 
 #endif // CONFIGURATION_HPP

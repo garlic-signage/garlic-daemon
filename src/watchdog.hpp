@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <thread>
+#include "configuration.hpp"
 
 using namespace std;
 
@@ -39,8 +40,9 @@ using namespace std;
 class Watchdog
 {
     public:
+        /// Player name and path are taken from the configuration.
         /// proc_path can be replaced by a fake directory in tests.
-        explicit Watchdog(string proc_path = "/proc");
+        explicit Watchdog(const Configuration &configuration, string proc_path = "/proc");
         bool isPlayerRunning();
         bool isReboot();
         void setActivity(bool is_active);
@@ -50,10 +52,10 @@ class Watchdog
 
     private:
         string proc_path;
-        string player_name               = "garlic-player";
-        string path_to_player_executable = "/opt/garlic-player/garlic.sh";
+        string player_name;
+        string path_to_player_executable;
         int getPlayerProcId();
-        bool isInCmdLine(const string& dir_name) const;
+        bool isInCmdLine(const string &dir_name) const;
         bool isZombie(int pid) const;
         bool is_active = true;
 };

@@ -16,46 +16,31 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *************************************************************************************/
 
-#include <filesystem>
 #include "cmd_parser.hpp"
+#include "configuration.hpp"
 #include "daemon.hpp"
 #include "log.hpp"
-#include "watchdog.hpp"
-#include "configuration.hpp"
 #include "message_dispatcher.hpp"
+#include "watchdog.hpp"
 
 int main(int argc, char **argv)
 {
-    CmdParser MyCmdParser(argc, argv);
-    Configuration MyConfiguration;
-    if (MyCmdParser.checkForConfigOption())
-    {
-        libconfig::Config config;
-        config.readFile(MyCmdParser.getConfigFilePath().c_str());
-        MyConfiguration.readLibConfigValues(&config);
-    }
-    std::string lockfile_name = "/tmp/" + MyConfiguration.getAppName() + ".lock";
-
-#ifdef NDEBUG
-    if (std::filesystem::exists(lockfile_name))
-    {
-        std::cerr << ("Application is already running!") << std::endl;
-        return 1;
-    }
-    else
-    {
-        ofstream file;
-        file.open(lockfile_name);
-    }
-#endif
+    CmdParser cmd_parser(argc, argv);
     try
     {
+        Configuration configuration;
+        if (cmd_parser.checkForConfigOption())
+        {
+            libconfig::Config config;
+            config.readFile(cmd_parser.getConfigFilePath().c_str());
+            configuration.readLibConfigValues(&config);
+        }
 
         // Must happen before any thread is started, so all threads inherit the blocked signals
         Daemon::blockSignals();
 
-        Watchdog watchdog;
-        IPCMessageReceiver receiver("/garlic-daemon");
+        Watchdog watchdog(configuration);
+        IPCMessageReceiver receiver(configuration.getMessageQueue());
         SystemActions system_actions;
         MessageDispatcher dispatcher(system_actions);
 
@@ -65,13 +50,21 @@ int main(int argc, char **argv)
 
         LOG_INFO("The daemon process ended gracefully.");
     }
+    catch (const libconfig::FileIOException &)
+    {
+        std::cerr << "Error: cannot read config file " << cmd_parser.getConfigFilePath() << std::endl;
+        return 1;
+    }
+    catch (const libconfig::ParseException &e)
+    {
+        std::cerr << "Error: config file " << e.getFile() << ":" << e.getLine() << " - " << e.getError() << std::endl;
+        return 1;
+    }
     catch (const std::exception &e)
     {
         std::cerr << "Error: " << e.what() << std::endl;
-        std::remove(lockfile_name.c_str());
         return 1;
     }
 
-    std::remove(lockfile_name.c_str()); // important to do as last entry
     return 0;
 }

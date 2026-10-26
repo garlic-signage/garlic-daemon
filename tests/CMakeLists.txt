@@ -11,6 +11,9 @@ add_executable(garlic-tests
 
 target_link_libraries(garlic-tests PRIVATE garlic-core GTest::gtest_main)
 
+# Lets a test check that the shipped config file is valid
+target_compile_definitions(garlic-tests PRIVATE CONFIG_FILE="${PROJECT_SOURCE_DIR}/resource/config/garlic-daemon.conf")
+
 # Registers every TEST() with ctest, a hanging test fails after 10 seconds
 include(GoogleTest)
 gtest_discover_tests(garlic-tests PROPERTIES TIMEOUT 10)

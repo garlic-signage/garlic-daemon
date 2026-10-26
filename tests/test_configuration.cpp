@@ -26,6 +26,7 @@ TEST(Configuration, DefaultValues)
     Configuration configuration;
 
     EXPECT_EQ(configuration.getAppName(), "garlic-daemon");
+    EXPECT_EQ(configuration.getMessageQueue(), "/garlic-daemon");
     EXPECT_EQ(configuration.getPlayerName(), "garlic-player");
     EXPECT_EQ(configuration.getPlayerPath(), "/usr/local/bin/");
     EXPECT_EQ(configuration.getPlayerUser(), "digitalsignage");
@@ -35,6 +36,7 @@ TEST(Configuration, ReadsAllValues)
 {
     libconfig::Config config;
     config.readString("app_name = \"my-daemon\";"
+                      "message_queue = \"/my-queue\";"
                       "Player = {"
                       "  name = \"my-player\";"
                       "  path = \"/opt/player/\";"
@@ -45,6 +47,7 @@ TEST(Configuration, ReadsAllValues)
     configuration.readLibConfigValues(&config);
 
     EXPECT_EQ(configuration.getAppName(), "my-daemon");
+    EXPECT_EQ(configuration.getMessageQueue(), "/my-queue");
     EXPECT_EQ(configuration.getPlayerName(), "my-player");
     EXPECT_EQ(configuration.getPlayerPath(), "/opt/player/");
     EXPECT_EQ(configuration.getPlayerUser(), "tester");
@@ -74,6 +77,22 @@ TEST(Configuration, MissingSingleValueKeepsDefault)
 
     EXPECT_EQ(configuration.getAppName(), "garlic-daemon");
     EXPECT_EQ(configuration.getPlayerName(), "my-player");
+    EXPECT_EQ(configuration.getPlayerPath(), "/usr/local/bin/");
+    EXPECT_EQ(configuration.getPlayerUser(), "digitalsignage");
+}
+
+// CONFIG_FILE points to resource/config/garlic-daemon.conf, see tests/CMakeLists.txt
+TEST(Configuration, ShippedConfigFileIsValid)
+{
+    libconfig::Config config;
+    ASSERT_NO_THROW(config.readFile(CONFIG_FILE));
+
+    Configuration configuration;
+    configuration.readLibConfigValues(&config);
+
+    EXPECT_EQ(configuration.getAppName(), "garlic-daemon");
+    EXPECT_EQ(configuration.getMessageQueue(), "/garlic-daemon");
+    EXPECT_EQ(configuration.getPlayerName(), "garlic-player");
     EXPECT_EQ(configuration.getPlayerPath(), "/usr/local/bin/");
     EXPECT_EQ(configuration.getPlayerUser(), "digitalsignage");
 }

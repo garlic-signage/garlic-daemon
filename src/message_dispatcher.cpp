@@ -20,7 +20,7 @@
 
 MessageDispatcher::MessageDispatcher(SystemActions &system_actions) : MySystemActions(system_actions) {}
 
-void MessageDispatcher::dispatch(const std::string& message)
+void MessageDispatcher::dispatch(const std::string &message)
 {
     if (message == REBOOT)
     {

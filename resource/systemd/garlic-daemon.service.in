@@ -1,0 +1,15 @@
+# Template, CMake replaces the @...@ paths during configuration
+[Unit]
+Description=garlic-daemon: system functions and watchdog for the garlic-player
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=@CMAKE_INSTALL_FULL_BINDIR@/garlic-daemon --config @CMAKE_INSTALL_FULL_SYSCONFDIR@/garlic-daemon/garlic-daemon.conf
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+User=root
+SyslogIdentifier=garlic-daemon
+
+[Install]
+WantedBy=multi-user.target

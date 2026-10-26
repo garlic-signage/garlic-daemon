@@ -20,7 +20,11 @@
 
 #include <utility>
 
-Watchdog::Watchdog(string proc_path) : proc_path(std::move(proc_path)) {}
+Watchdog::Watchdog(const Configuration &configuration, string proc_path)
+    : proc_path(std::move(proc_path)), player_name(configuration.getPlayerName()),
+      path_to_player_executable(configuration.getPlayerPath() + configuration.getPlayerName())
+{
+}
 
 void Watchdog::setActivity(bool is_active)
 {
@@ -31,7 +35,7 @@ void Watchdog::check()
 {
     if (!isPlayerRunning())
     {
-        std::cerr << "garlic-player needs to be started" << std::endl;
+        std::cerr << player_name << " needs to be started" << std::endl;
     }
 }
 
@@ -72,7 +76,7 @@ int Watchdog::getPlayerProcId()
     return pid;
 }
 
-bool Watchdog::isInCmdLine(const string& dir_name) const
+bool Watchdog::isInCmdLine(const string &dir_name) const
 {
     // Read contents of virtual /proc/{pid}/cmdline file
     string cmdPath = proc_path + "/" + dir_name + "/cmdline";

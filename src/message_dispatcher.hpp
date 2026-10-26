@@ -31,7 +31,7 @@ class MessageDispatcher
 
     public:
         explicit MessageDispatcher(SystemActions &system_actions);
-        void dispatch(const std::string& message);
+        void dispatch(const std::string &message);
 
     private:
         const std::string REBOOT      = "reboot";
