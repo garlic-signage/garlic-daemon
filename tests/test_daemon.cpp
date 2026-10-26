@@ -33,7 +33,7 @@ class DaemonTest : public ::testing::Test
     protected:
         FakeSystemActions system_actions;
         Configuration configuration;
-        Watchdog watchdog{configuration};
+        Watchdog watchdog{configuration, system_actions};
         MessageDispatcher dispatcher{system_actions, watchdog};
         IPCMessageReceiver receiver{uniqueQueueName()};
 

@@ -22,6 +22,7 @@
 #include <cerrno>
 #include <csignal>
 #include <cstring>
+#include <fstream>
 #include <thread>
 #include <grp.h>
 #include <pwd.h>
@@ -31,10 +32,12 @@
 
 extern char **environ;
 
-Watchdog::Watchdog(const Configuration &configuration)
+Watchdog::Watchdog(const Configuration &configuration, SystemActions &system_actions)
     : player_name(configuration.getPlayerName()), player_command(configuration.getPlayerCommand()),
       player_user(configuration.getPlayerUser()), player_environment(configuration.getPlayerEnvironment()),
-      heartbeat_timeout(configuration.getHeartbeatTimeout())
+      heartbeat_timeout(configuration.getHeartbeatTimeout()),
+      reboot_after_crashes(configuration.getRebootAfterCrashes()),
+      reboot_stamp_file(configuration.getStateDir() + "/last_reboot"), system_actions(system_actions)
 {
 }
 
@@ -279,4 +282,45 @@ void Watchdog::playerEnded()
     if (crash_count > 0)
         LOG_WARNING(player_name, " crashed ", crash_count, " times in a row, next start in ",
                     restartDelay(crash_count).count(), " seconds.");
+
+    if (reboot_after_crashes > 0 && crash_count >= reboot_after_crashes)
+        rebootIfAllowed();
+}
+
+/**
+ * Reboots, if the last reboot by the watchdog is at least REBOOT_INTERVAL ago.
+ * The time is stored as seconds since 1970 (system clock), because the
+ * steady clock starts again with every boot.
+ */
+void Watchdog::rebootIfAllowed()
+{
+    auto now = std::chrono::system_clock::now();
+
+    long long last_reboot = 0;
+    bool has_last_reboot  = static_cast<bool>(std::ifstream(reboot_stamp_file) >> last_reboot);
+    if (has_last_reboot)
+    {
+        auto since_last_reboot = now - std::chrono::system_clock::time_point(std::chrono::seconds(last_reboot));
+        // Also true for a negative value, i.e. the clock went back (e.g. no RTC). Then rather do not reboot.
+        if (since_last_reboot < REBOOT_INTERVAL)
+        {
+            LOG_WARNING("No reboot, the watchdog already rebooted within the last ",
+                        std::chrono::duration_cast<std::chrono::hours>(REBOOT_INTERVAL).count(), " hours.");
+            return;
+        }
+    }
+
+    // Without the stamp the next boot could not know about this reboot, so a broken
+    // player could cause a reboot loop. Therefore no stamp means no reboot.
+    std::ofstream stamp(reboot_stamp_file);
+    stamp << std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count() << std::endl;
+    if (!stamp)
+    {
+        LOG_ERROR("No reboot, cannot write ", reboot_stamp_file);
+        return;
+    }
+    stamp.close();
+
+    LOG_ERROR(player_name, " crashed ", crash_count, " times in a row, reboot the system.");
+    system_actions.reboot();
 }

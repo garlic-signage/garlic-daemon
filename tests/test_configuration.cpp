@@ -39,6 +39,7 @@ void expectPlayerDefaults(const Configuration &configuration)
     EXPECT_EQ(configuration.getPlayerUser(), "digitalsignage");
     EXPECT_TRUE(configuration.getPlayerEnvironment().empty());
     EXPECT_EQ(configuration.getHeartbeatTimeout(), 0);
+    EXPECT_EQ(configuration.getRebootAfterCrashes(), 7);
 }
 } // namespace
 
@@ -48,6 +49,7 @@ TEST(Configuration, DefaultValues)
 
     EXPECT_EQ(configuration.getAppName(), "garlic-daemon");
     EXPECT_EQ(configuration.getMessageQueue(), "/garlic-daemon");
+    EXPECT_EQ(configuration.getStateDir(), "/var/lib/garlic-daemon");
     expectPlayerDefaults(configuration);
 }
 
@@ -55,12 +57,14 @@ TEST(Configuration, ReadsAllValues)
 {
     Configuration configuration = readConfiguration("app_name = \"my-daemon\";"
                                                     "message_queue = \"/my-queue\";"
+                                                    "state_dir = \"/tmp/state\";"
                                                     "Player = {"
                                                     "  name = \"my-player\";"
                                                     "  command = \"/opt/player/start.sh --fullscreen\";"
                                                     "  user = \"tester\";"
                                                     "  environment = [\"DISPLAY=:0\", \"LANG=de_DE.UTF-8\"];"
                                                     "  heartbeat_timeout = 60;"
+                                                    "  reboot_after_crashes = 3;"
                                                     "};");
 
     EXPECT_EQ(configuration.getAppName(), "my-daemon");
@@ -70,6 +74,8 @@ TEST(Configuration, ReadsAllValues)
     EXPECT_EQ(configuration.getPlayerUser(), "tester");
     EXPECT_EQ(configuration.getPlayerEnvironment(), (std::vector<std::string>{"DISPLAY=:0", "LANG=de_DE.UTF-8"}));
     EXPECT_EQ(configuration.getHeartbeatTimeout(), 60);
+    EXPECT_EQ(configuration.getRebootAfterCrashes(), 3);
+    EXPECT_EQ(configuration.getStateDir(), "/tmp/state");
 }
 
 TEST(Configuration, MissingPlayerGroupKeepsPlayerDefaults)
@@ -106,4 +112,6 @@ TEST(Configuration, ShippedConfigFileIsValid)
     EXPECT_EQ(configuration.getPlayerUser(), "digitalsignage");
     EXPECT_EQ(configuration.getPlayerEnvironment(), (std::vector<std::string>{"DISPLAY=:0"}));
     EXPECT_EQ(configuration.getHeartbeatTimeout(), 0);
+    EXPECT_EQ(configuration.getRebootAfterCrashes(), 7);
+    EXPECT_EQ(configuration.getStateDir(), "/var/lib/garlic-daemon");
 }

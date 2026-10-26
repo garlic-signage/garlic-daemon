@@ -39,9 +39,9 @@ int main(int argc, char **argv)
         // Must happen before any thread is started, so all threads inherit the blocked signals
         Daemon::blockSignals();
 
-        Watchdog watchdog(configuration);
-        IPCMessageReceiver receiver(configuration.getMessageQueue());
         SystemActions system_actions;
+        Watchdog watchdog(configuration, system_actions);
+        IPCMessageReceiver receiver(configuration.getMessageQueue());
         MessageDispatcher dispatcher(system_actions, watchdog);
 
         Daemon daemon(watchdog, receiver, dispatcher);

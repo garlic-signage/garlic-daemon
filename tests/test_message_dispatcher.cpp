@@ -26,7 +26,7 @@ using namespace std::chrono_literals;
 TEST(MessageDispatcher, RebootMessageCallsReboot)
 {
     FakeSystemActions system_actions;
-    Watchdog watchdog{Configuration()};
+    Watchdog watchdog{Configuration(), system_actions};
     MessageDispatcher dispatcher(system_actions, watchdog);
 
     dispatcher.dispatch("reboot");
@@ -37,7 +37,7 @@ TEST(MessageDispatcher, RebootMessageCallsReboot)
 TEST(MessageDispatcher, InstallAndRemoveAppDoNotReboot)
 {
     FakeSystemActions system_actions;
-    Watchdog watchdog{Configuration()};
+    Watchdog watchdog{Configuration(), system_actions};
     MessageDispatcher dispatcher(system_actions, watchdog);
 
     dispatcher.dispatch("install_app");
@@ -49,7 +49,7 @@ TEST(MessageDispatcher, InstallAndRemoveAppDoNotReboot)
 TEST(MessageDispatcher, UnknownMessagesDoNotReboot)
 {
     FakeSystemActions system_actions;
-    Watchdog watchdog{Configuration()};
+    Watchdog watchdog{Configuration(), system_actions};
     MessageDispatcher dispatcher(system_actions, watchdog);
 
     dispatcher.dispatch("");
@@ -68,7 +68,7 @@ TEST(MessageDispatcher, HeartbeatMessageResetsWatchdogTimeout)
     configuration.readLibConfigValues(&config);
 
     FakeSystemActions system_actions;
-    Watchdog watchdog(configuration);
+    Watchdog watchdog(configuration, system_actions);
     MessageDispatcher dispatcher(system_actions, watchdog);
     watchdog.check();
     pid_t pid = watchdog.getPlayerPid();

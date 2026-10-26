@@ -33,6 +33,9 @@ void Configuration::readLibConfigValues(const libconfig::Config *config)
         if (config->exists("message_queue"))
             config->lookupValue("message_queue", message_queue);
 
+        if (config->exists("state_dir"))
+            config->lookupValue("state_dir", state_dir);
+
         if (!config->exists("Player"))
             return;
 
@@ -49,6 +52,9 @@ void Configuration::readLibConfigValues(const libconfig::Config *config)
 
         if (player.exists("heartbeat_timeout"))
             player.lookupValue("heartbeat_timeout", heartbeat_timeout);
+
+        if (player.exists("reboot_after_crashes"))
+            player.lookupValue("reboot_after_crashes", reboot_after_crashes);
 
         // List of "KEY=VALUE" strings, e.g. environment = ["DISPLAY=:0"];
         if (player.exists("environment"))
@@ -74,6 +80,11 @@ std::string Configuration::getMessageQueue() const
     return message_queue;
 }
 
+std::string Configuration::getStateDir() const
+{
+    return state_dir;
+}
+
 std::string Configuration::getPlayerName() const
 {
     return player_name;
@@ -97,4 +108,9 @@ std::vector<std::string> Configuration::getPlayerEnvironment() const
 int Configuration::getHeartbeatTimeout() const
 {
     return heartbeat_timeout;
+}
+
+int Configuration::getRebootAfterCrashes() const
+{
+    return reboot_after_crashes;
 }

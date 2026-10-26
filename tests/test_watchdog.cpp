@@ -23,6 +23,7 @@
 #include <fstream>
 #include <thread>
 #include "watchdog.hpp"
+#include "fake_system_actions.hpp"
 
 namespace fs = std::filesystem;
 using namespace std::chrono_literals;
@@ -42,14 +43,34 @@ class WatchdogTest : public ::testing::Test
 
         void TearDown() override { fs::remove_all(tmp_dir); }
 
-        // Creates a Configuration with the given Player settings in libconfig syntax
-        static Configuration makeConfiguration(const std::string &player_settings)
+        FakeSystemActions system_actions;
+
+        // Creates a Configuration with the given Player settings in libconfig syntax.
+        // The state directory is the temporary directory, so tests never write to /var/lib.
+        Configuration makeConfiguration(const std::string &player_settings) const
         {
             libconfig::Config config;
-            config.readString("Player = { " + player_settings + " };");
+            config.readString("state_dir = \"" + tmp_dir.string() + "\"; Player = { " + player_settings + " };");
             Configuration configuration;
             configuration.readLibConfigValues(&config);
             return configuration;
+        }
+
+        // Starts the player and lets it crash right away
+        static void crashPlayer(Watchdog &watchdog)
+        {
+            watchdog.check();
+            kill(watchdog.getPlayerPid(), SIGKILL);
+            std::this_thread::sleep_for(100ms);
+            watchdog.check(); // notices the crash
+        }
+
+        // Writes the time of the last reboot, relative to now
+        void writeLastReboot(std::chrono::seconds offset) const
+        {
+            auto time = std::chrono::system_clock::now() + offset;
+            std::ofstream(tmp_dir / "last_reboot")
+                << std::chrono::duration_cast<std::chrono::seconds>(time.time_since_epoch()).count();
         }
 
         // true if a process with this pid exists
@@ -71,7 +92,7 @@ class WatchdogTest : public ::testing::Test
 
 TEST_F(WatchdogTest, CheckStartsPlayer)
 {
-    Watchdog watchdog(makeConfiguration("command = \"sleep 30\";"));
+    Watchdog watchdog(makeConfiguration("command = \"sleep 30\";"), system_actions);
     EXPECT_FALSE(watchdog.isPlayerRunning());
 
     watchdog.check();
@@ -82,7 +103,7 @@ TEST_F(WatchdogTest, CheckStartsPlayer)
 
 TEST_F(WatchdogTest, CheckDoesNotStartSecondPlayer)
 {
-    Watchdog watchdog(makeConfiguration("command = \"sleep 30\";"));
+    Watchdog watchdog(makeConfiguration("command = \"sleep 30\";"), system_actions);
     watchdog.check();
     pid_t pid = watchdog.getPlayerPid();
 
@@ -94,7 +115,7 @@ TEST_F(WatchdogTest, CheckDoesNotStartSecondPlayer)
 TEST_F(WatchdogTest, CrashedPlayerIsRestartedAfterBackoff)
 {
     // Takes about 5 seconds, the first backoff delay
-    Watchdog watchdog(makeConfiguration("command = \"sleep 30\";"));
+    Watchdog watchdog(makeConfiguration("command = \"sleep 30\";"), system_actions);
     watchdog.check();
     pid_t first_pid = watchdog.getPlayerPid();
 
@@ -112,7 +133,7 @@ TEST_F(WatchdogTest, CrashedPlayerIsRestartedAfterBackoff)
 
 TEST_F(WatchdogTest, HangingPlayerIsStopped)
 {
-    Watchdog watchdog(makeConfiguration("command = \"sleep 30\"; heartbeat_timeout = 1;"));
+    Watchdog watchdog(makeConfiguration("command = \"sleep 30\"; heartbeat_timeout = 1;"), system_actions);
     watchdog.check();
     pid_t first_pid = watchdog.getPlayerPid();
 
@@ -126,7 +147,7 @@ TEST_F(WatchdogTest, HangingPlayerIsStopped)
 
 TEST_F(WatchdogTest, StoppedPlayerIsStartedWithoutDelay)
 {
-    Watchdog watchdog(makeConfiguration("command = \"sleep 30\";"));
+    Watchdog watchdog(makeConfiguration("command = \"sleep 30\";"), system_actions);
     watchdog.check();
 
     watchdog.stopPlayer(); // e.g. for an update, this is no crash
@@ -150,7 +171,7 @@ TEST(Watchdog, RestartDelayDoublesUpToMaximum)
 
 TEST_F(WatchdogTest, HeartbeatKeepsPlayerRunning)
 {
-    Watchdog watchdog(makeConfiguration("command = \"sleep 30\"; heartbeat_timeout = 1;"));
+    Watchdog watchdog(makeConfiguration("command = \"sleep 30\"; heartbeat_timeout = 1;"), system_actions);
     watchdog.check();
     pid_t pid = watchdog.getPlayerPid();
 
@@ -166,7 +187,7 @@ TEST_F(WatchdogTest, HeartbeatKeepsPlayerRunning)
 
 TEST_F(WatchdogTest, NoHeartbeatTimeoutMeansNoHangDetection)
 {
-    Watchdog watchdog(makeConfiguration("command = \"sleep 30\"; heartbeat_timeout = 0;"));
+    Watchdog watchdog(makeConfiguration("command = \"sleep 30\"; heartbeat_timeout = 0;"), system_actions);
     watchdog.check();
     pid_t pid = watchdog.getPlayerPid();
 
@@ -178,7 +199,7 @@ TEST_F(WatchdogTest, NoHeartbeatTimeoutMeansNoHangDetection)
 
 TEST_F(WatchdogTest, InactiveWatchdogDoesNotStartPlayer)
 {
-    Watchdog watchdog(makeConfiguration("command = \"sleep 30\";"));
+    Watchdog watchdog(makeConfiguration("command = \"sleep 30\";"), system_actions);
     watchdog.setActivity(false);
 
     watchdog.check();
@@ -190,7 +211,8 @@ TEST_F(WatchdogTest, StopPlayerStopsAllProcessesOfStartScript)
 {
     // Like a start script: starts a child process and waits for it
     fs::path pid_file = tmp_dir / "child.pid";
-    Watchdog watchdog(makeConfiguration("command = \"sleep 30 & echo $! > " + pid_file.string() + "; wait\";"));
+    Watchdog watchdog(makeConfiguration("command = \"sleep 30 & echo $! > " + pid_file.string() + "; wait\";"),
+                      system_actions);
     watchdog.check();
     pid_t child_pid = std::stoi(readFileWithTimeout(pid_file));
     ASSERT_TRUE(processExists(child_pid));
@@ -207,7 +229,8 @@ TEST_F(WatchdogTest, PlayerIgnoringSigtermIsKilled)
     // Takes STOP_TIMEOUT (5 seconds), because the watchdog waits before it sends SIGKILL
     fs::path ready_file = tmp_dir / "ready";
     Watchdog watchdog(
-        makeConfiguration("command = \"trap '' TERM; echo ready > " + ready_file.string() + "; sleep 30\";"));
+        makeConfiguration("command = \"trap '' TERM; echo ready > " + ready_file.string() + "; sleep 30\";"),
+        system_actions);
     watchdog.check();
     pid_t pid = watchdog.getPlayerPid();
     ASSERT_EQ(readFileWithTimeout(ready_file), "ready"); // SIGTERM is ignored from now on
@@ -223,7 +246,7 @@ TEST_F(WatchdogTest, DestructorStopsPlayer)
 {
     pid_t pid = -1;
     {
-        Watchdog watchdog(makeConfiguration("command = \"sleep 30\";"));
+        Watchdog watchdog(makeConfiguration("command = \"sleep 30\";"), system_actions);
         watchdog.check();
         pid = watchdog.getPlayerPid();
     }
@@ -235,8 +258,84 @@ TEST_F(WatchdogTest, EnvironmentFromConfigurationIsPassed)
 {
     fs::path out_file = tmp_dir / "env.txt";
     Watchdog watchdog(makeConfiguration("command = \"echo $GARLIC_TEST > " + out_file.string() +
-                                        "\"; environment = [\"GARLIC_TEST=hello\"];"));
+                                        "\"; environment = [\"GARLIC_TEST=hello\"];"),
+                      system_actions);
     watchdog.check();
 
     EXPECT_EQ(readFileWithTimeout(out_file), "hello");
+}
+
+TEST_F(WatchdogTest, CrashLoopRebootsAndStoresTime)
+{
+    Watchdog watchdog(makeConfiguration("command = \"sleep 30\"; reboot_after_crashes = 1;"), system_actions);
+
+    crashPlayer(watchdog);
+
+    EXPECT_EQ(system_actions.reboot_calls, 1);
+    long long stored = 0;
+    std::ifstream(tmp_dir / "last_reboot") >> stored;
+    auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch());
+    EXPECT_NEAR(stored, now.count(), 5);
+}
+
+TEST_F(WatchdogTest, NoRebootBeforeCrashLimit)
+{
+    Watchdog watchdog(makeConfiguration("command = \"sleep 30\"; reboot_after_crashes = 2;"), system_actions);
+
+    crashPlayer(watchdog);
+
+    EXPECT_EQ(system_actions.reboot_calls, 0);
+}
+
+TEST_F(WatchdogTest, NoRebootWhenDisabled)
+{
+    Watchdog watchdog(makeConfiguration("command = \"sleep 30\"; reboot_after_crashes = 0;"), system_actions);
+
+    crashPlayer(watchdog);
+
+    EXPECT_EQ(system_actions.reboot_calls, 0);
+}
+
+TEST_F(WatchdogTest, NoSecondRebootWithinInterval)
+{
+    writeLastReboot(-1h);
+    Watchdog watchdog(makeConfiguration("command = \"sleep 30\"; reboot_after_crashes = 1;"), system_actions);
+
+    crashPlayer(watchdog);
+
+    EXPECT_EQ(system_actions.reboot_calls, 0);
+}
+
+TEST_F(WatchdogTest, RebootAgainAfterInterval)
+{
+    writeLastReboot(-7h);
+    Watchdog watchdog(makeConfiguration("command = \"sleep 30\"; reboot_after_crashes = 1;"), system_actions);
+
+    crashPlayer(watchdog);
+
+    EXPECT_EQ(system_actions.reboot_calls, 1);
+}
+
+TEST_F(WatchdogTest, NoRebootWhenClockWentBack)
+{
+    writeLastReboot(1h); // the last reboot seems to be in the future
+    Watchdog watchdog(makeConfiguration("command = \"sleep 30\"; reboot_after_crashes = 1;"), system_actions);
+
+    crashPlayer(watchdog);
+
+    EXPECT_EQ(system_actions.reboot_calls, 0);
+}
+
+TEST_F(WatchdogTest, NoRebootWhenTimeCannotBeStored)
+{
+    libconfig::Config config;
+    config.readString("state_dir = \"" + (tmp_dir / "does-not-exist").string() +
+                      "\"; Player = { command = \"sleep 30\"; reboot_after_crashes = 1; };");
+    Configuration configuration;
+    configuration.readLibConfigValues(&config);
+    Watchdog watchdog(configuration, system_actions);
+
+    crashPlayer(watchdog);
+
+    EXPECT_EQ(system_actions.reboot_calls, 0);
 }

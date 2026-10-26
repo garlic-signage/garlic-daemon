@@ -25,6 +25,7 @@
 #include <vector>
 #include <sys/types.h>
 #include "configuration.hpp"
+#include "system_actions.hpp"
 
 /**
  * Starts the player as child process and restarts it when it has ended
@@ -38,13 +39,19 @@
  * (5, 10, 20 ... seconds) up to BACKOFF_MAX. A player that ran longer than
  * STABLE_RUNTIME is restarted without delay.
  *
+ * Reboot: after reboot_after_crashes crashes in a row the system is rebooted,
+ * because the cause may be the system (e.g. graphics driver) and not the player.
+ * To avoid a reboot loop with a broken player, this happens at most once per
+ * REBOOT_INTERVAL. The time of the last reboot is stored in <state_dir>/last_reboot,
+ * so it survives the reboot. If the file cannot be written, there is no reboot.
+ *
  * The player gets its own process group, so stopping it also stops
  * all processes a start script has started.
  */
 class Watchdog
 {
     public:
-        explicit Watchdog(const Configuration &configuration);
+        Watchdog(const Configuration &configuration, SystemActions &system_actions);
 
         /// Stops the player.
         ~Watchdog();
@@ -71,16 +78,20 @@ class Watchdog
         static std::chrono::seconds restartDelay(int crash_count);
 
     private:
-        static constexpr auto STOP_TIMEOUT   = std::chrono::seconds(5);
-        static constexpr auto STABLE_RUNTIME = std::chrono::seconds(60);
-        static constexpr auto BACKOFF_START  = std::chrono::seconds(5);
-        static constexpr auto BACKOFF_MAX    = std::chrono::seconds(300);
+        static constexpr auto STOP_TIMEOUT    = std::chrono::seconds(5);
+        static constexpr auto STABLE_RUNTIME  = std::chrono::seconds(60);
+        static constexpr auto BACKOFF_START   = std::chrono::seconds(5);
+        static constexpr auto BACKOFF_MAX     = std::chrono::seconds(300);
+        static constexpr auto REBOOT_INTERVAL = std::chrono::hours(6);
 
         std::string player_name;
         std::string player_command;
         std::string player_user;
         std::vector<std::string> player_environment;
         std::chrono::seconds heartbeat_timeout;
+        int reboot_after_crashes;
+        std::string reboot_stamp_file;
+        SystemActions &system_actions;
 
         std::mutex mtx;
         bool is_active   = true;
@@ -96,6 +107,7 @@ class Watchdog
         bool isRunning();
         bool isHanging() const;
         void playerEnded();
+        void rebootIfAllowed();
 };
 
 #endif // WATCHDOG_HPP

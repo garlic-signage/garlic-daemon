@@ -36,27 +36,33 @@ class Configuration
 
         [[nodiscard]] std::string getAppName() const;
         [[nodiscard]] std::string getMessageQueue() const;
+        [[nodiscard]] std::string getStateDir() const;
         [[nodiscard]] std::string getPlayerName() const;
         [[nodiscard]] std::string getPlayerCommand() const;
         [[nodiscard]] std::string getPlayerUser() const;
         [[nodiscard]] std::vector<std::string> getPlayerEnvironment() const;
         [[nodiscard]] int getHeartbeatTimeout() const;
+        [[nodiscard]] int getRebootAfterCrashes() const;
 
     private:
         const std::string APP_NAME       = "garlic-daemon";
         const std::string MESSAGE_QUEUE  = "/garlic-daemon";
+        const std::string STATE_DIR      = "/var/lib/garlic-daemon";
         const std::string PLAYER_NAME    = "garlic-player";
         const std::string PLAYER_COMMAND = "/opt/garlic-player/garlic.sh";
         const std::string PLAYER_USER    = "digitalsignage";
         const int HEARTBEAT_TIMEOUT      = 0; // disabled
+        const int REBOOT_AFTER_CRASHES   = 7; // when the backoff has reached its maximum, 0 = never
 
         std::string app_name       = APP_NAME;
         std::string message_queue  = MESSAGE_QUEUE;
+        std::string state_dir      = STATE_DIR;
         std::string player_name    = PLAYER_NAME;
         std::string player_command = PLAYER_COMMAND;
         std::string player_user    = PLAYER_USER;
         std::vector<std::string> player_environment;
-        int heartbeat_timeout = HEARTBEAT_TIMEOUT;
+        int heartbeat_timeout    = HEARTBEAT_TIMEOUT;
+        int reboot_after_crashes = REBOOT_AFTER_CRASHES;
 };
 
 #endif // CONFIGURATION_HPP
