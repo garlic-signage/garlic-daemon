@@ -44,7 +44,7 @@ bool isFileOnStick(const std::filesystem::path &root, const std::filesystem::pat
 
 void UsbContentHandler::handle(const std::filesystem::path &root)
 {
-    LOG_INFO("Look for files on USB stick ", root.string());
+    logInfo("Look for files on USB stick {}", root.string());
 
     if (isFileOnStick(root, CONFIG_XML))
         actions_.applyConfig((root / CONFIG_XML).string());

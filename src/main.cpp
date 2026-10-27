@@ -16,6 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *************************************************************************************/
 
+#include <print>
 #include <pwd.h>
 #include <unistd.h>
 #include "cmd_parser.hpp"
@@ -41,7 +42,7 @@ static uid_t playerUid(const Configuration &configuration)
     passwd *pw = getpwnam(configuration.getPlayerUser().c_str());
     if (pw == nullptr)
     {
-        LOG_WARNING("User ", configuration.getPlayerUser(), " does not exist, only root may connect to the socket.");
+        logWarning("User {} does not exist, only root may connect to the socket.", configuration.getPlayerUser());
         return 0;
     }
     return pw->pw_uid;
@@ -52,31 +53,31 @@ int main(int argc, char **argv)
     CmdParser cmd_parser(argc, argv);
     if (!cmd_parser.getError().empty())
     {
-        std::cerr << "Error: " << cmd_parser.getError() << "\n\n" << CmdParser::helpText();
+        std::print(stderr, "Error: {}\n\n{}", cmd_parser.getError(), CmdParser::helpText());
         return 2; // usual exit code for a wrong command line
     }
 
     if (cmd_parser.has("--help"))
     {
-        std::cout << CmdParser::helpText();
+        std::print("{}", CmdParser::helpText());
         return 0;
     }
 
     if (cmd_parser.has("--version"))
     {
-        std::cout << "garlic-daemon " << GARLIC_DAEMON_VERSION << std::endl;
+        std::println("garlic-daemon {}", GARLIC_DAEMON_VERSION);
         return 0;
     }
 
     try
     {
-        LOG_INFO("garlic-daemon ", GARLIC_DAEMON_VERSION, " starts.");
+        logInfo("garlic-daemon {} starts.", GARLIC_DAEMON_VERSION);
 
         // Order: defaults, then config file, then command line options
         Configuration configuration;
         if (cmd_parser.has("--config"))
         {
-            LOG_INFO("Config file: ", cmd_parser.value("--config"));
+            logInfo("Config file: {}", cmd_parser.value("--config"));
             libconfig::Config config;
             config.readFile(cmd_parser.value("--config").c_str());
             configuration.readLibConfigValues(&config);
@@ -99,21 +100,21 @@ int main(int argc, char **argv)
         daemon.start();
         daemon.waitForTerminationSignal(); // blocks until SIGINT or SIGTERM
 
-        LOG_INFO("The daemon process ended gracefully.");
+        logInfo("The daemon process ended gracefully.");
     }
     catch (const libconfig::FileIOException &)
     {
-        std::cerr << "Error: cannot read config file " << cmd_parser.value("--config") << std::endl;
+        logError("Cannot read config file {}", cmd_parser.value("--config"));
         return 1;
     }
     catch (const libconfig::ParseException &e)
     {
-        std::cerr << "Error: config file " << e.getFile() << ":" << e.getLine() << " - " << e.getError() << std::endl;
+        logError("Config file {}:{} - {}", e.getFile(), e.getLine(), e.getError());
         return 1;
     }
     catch (const std::exception &e)
     {
-        std::cerr << "Error: " << e.what() << std::endl;
+        logError("{}", e.what());
         return 1;
     }
 

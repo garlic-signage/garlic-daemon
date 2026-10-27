@@ -19,7 +19,6 @@
 #ifndef CONFIGURATION_HPP
 #define CONFIGURATION_HPP
 
-#include <iostream>
 #include <string>
 #include <vector>
 #include <libconfig.h++>

@@ -110,7 +110,7 @@ void LocalSocketServer::send(const std::string &message)
     {
         // MSG_NOSIGNAL: no SIGPIPE when the client is gone, the server thread removes it then
         if (::send(client.fd, line.data(), line.size(), MSG_NOSIGNAL | MSG_DONTWAIT) < 0)
-            LOG_WARNING("Cannot send to client: ", strerror(errno));
+            logWarning("Cannot send to client: {}", strerror(errno));
     }
 }
 
@@ -146,11 +146,11 @@ void LocalSocketServer::loop(std::stop_token stop_token)
             {
                 close(client->fd);
                 clients_.erase(client);
-                LOG_INFO("Client disconnected.");
+                logInfo("Client disconnected.");
             }
         }
     }
-    std::cout << "Finish socket server thread." << std::endl;
+    logInfo("Finish socket server thread.");
 }
 
 void LocalSocketServer::acceptClient()
@@ -167,7 +167,7 @@ void LocalSocketServer::acceptClient()
 
     std::lock_guard<std::mutex> lock(clients_mtx_);
     clients_.push_back({fd, ""});
-    LOG_INFO("Client connected.");
+    logInfo("Client connected.");
 }
 
 /**
@@ -197,7 +197,7 @@ bool LocalSocketServer::readClient(Client &client)
 
     if (client.buffer.size() > MAX_LINE_LENGTH)
     {
-        LOG_WARNING("Line longer than ", MAX_LINE_LENGTH, " bytes, close connection.");
+        logWarning("Line longer than {} bytes, close connection.", MAX_LINE_LENGTH);
         return false;
     }
     return true;
@@ -216,7 +216,7 @@ bool LocalSocketServer::isAllowed(int fd) const
     if (credentials.uid == 0 || credentials.uid == allowed_uid_)
         return true;
 
-    LOG_WARNING("Rejected connection from uid ", credentials.uid, " (pid ", credentials.pid, ")");
+    logWarning("Rejected connection from uid {} (pid {})", credentials.uid, credentials.pid);
     return false;
 }
 

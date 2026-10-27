@@ -20,60 +20,77 @@
 #define LOG_HPP
 
 #include <chrono>
-#include <ctime>
-#include <iomanip>
+#include <filesystem>
+#include <format>
 #include <iostream>
-#include <sstream>
+#include <print>
+#include <source_location>
+#include <string>
+#include <type_traits>
 
-#define LOG_INFO(...) Log(std::clog, "INFO").write(__VA_ARGS__)
-#define LOG_WARNING(...) Log(std::clog, "WARNING", __FUNCTION__, __LINE__).write(__VA_ARGS__)
-#define LOG_ERROR(...) Log(std::clog, "ERROR", __FUNCTION__, __LINE__).write(__VA_ARGS__)
-#define LOG_DEBUG(...) Log(std::clog, "DEBUG", __FUNCTION__, __LINE__).write(__VA_ARGS__)
+/**
+ * Log functions for the daemon, they write one line per call to std::clog:
+ *
+ *     logInfo("Started {} with pid {}", player_name_, pid);
+ *     -> [2026-10-27_15:48:52.064] INFO-> Started garlic-player with pid 4774
+ *
+ * Warnings, errors and debug messages also show where they were logged:
+ *     [2026-10-27_15:48:52.064] WARNING watchdog.cpp:57-> ...
+ *
+ * The format string is checked at compile time like with std::format().
+ */
 
-inline std::string getLogTime(std::chrono::time_point<std::chrono::system_clock> time)
+/// Format string that also remembers the source location of the log call
+template <typename... Args> struct LogFormat
 {
-    auto epoch_seconds = std::chrono::system_clock::to_time_t(time);
-    std::tm utc_time{};
-    gmtime_r(&epoch_seconds, &utc_time); // gmtime() uses a static buffer and is not thread safe
-    std::stringstream stream;
-    stream << std::put_time(&utc_time, "[%F_%T");
-    auto truncated = std::chrono::system_clock::from_time_t(epoch_seconds);
-    auto delta_us  = std::chrono::duration_cast<std::chrono::milliseconds>(time - truncated).count();
-    stream << "." << std::fixed << std::setw(3) << std::setfill('0') << delta_us << "]";
-    return stream.str();
-}
+        std::format_string<Args...> format;
+        std::source_location location;
 
-template <typename TF> void writeLog(std::ostream &out, TF const &f)
-{
-    out << f;
-}
-
-struct Log
-{
-        std::ostream &out;
-
-        Log(std::ostream &stream, const char *type, const char *functionName, int line) : out(stream)
+        template <typename Text>
+        consteval LogFormat(const Text &text, std::source_location call = std::source_location::current())
+            : format(text), location(call)
         {
-            out << getLogTime(std::chrono::system_clock::now()) << " " << type << " " << line << ":" << functionName
-                << "()-> ";
         }
-
-        Log(std::ostream &stream, const char *type) : out(stream)
-        {
-            out << getLogTime(std::chrono::system_clock::now()) << " " << type << "-> ";
-        }
-
-        ~Log() { out << std::endl; }
-
-        template <typename TF, typename... TR> void write(TF const &f, TR const &...rest)
-        {
-            writeLog(out, f);
-            write(rest...);
-        }
-
-        template <typename TF> void write(TF const &f) { writeLog(out, f); }
-
-        static void write() {} // Handle the empty params case
 };
+
+/// Time stamp in UTC with milliseconds, e.g. [2026-10-27_15:48:52.064]
+inline std::string getLogTime(std::chrono::system_clock::time_point time)
+{
+    return std::format("[{:%F_%T}]", std::chrono::floor<std::chrono::milliseconds>(time));
+}
+
+/// Writes the whole line at once, so lines from different threads do not mix
+inline void writeLog(const char *type, const std::string &message)
+{
+    std::println(std::clog, "{} {}-> {}", getLogTime(std::chrono::system_clock::now()), type, message);
+}
+
+inline void writeLog(const char *type, const std::source_location &location, const std::string &message)
+{
+    std::string file = std::filesystem::path(location.file_name()).filename().string();
+    std::println(std::clog, "{} {} {}:{}-> {}", getLogTime(std::chrono::system_clock::now()), type, file,
+                 location.line(), message);
+}
+
+// std::type_identity_t: the types of the arguments are deduced from args only, not from the format string
+template <typename... Args> void logInfo(LogFormat<std::type_identity_t<Args>...> format, Args &&...args)
+{
+    writeLog("INFO", std::format(format.format, std::forward<Args>(args)...));
+}
+
+template <typename... Args> void logWarning(LogFormat<std::type_identity_t<Args>...> format, Args &&...args)
+{
+    writeLog("WARNING", format.location, std::format(format.format, std::forward<Args>(args)...));
+}
+
+template <typename... Args> void logError(LogFormat<std::type_identity_t<Args>...> format, Args &&...args)
+{
+    writeLog("ERROR", format.location, std::format(format.format, std::forward<Args>(args)...));
+}
+
+template <typename... Args> void logDebug(LogFormat<std::type_identity_t<Args>...> format, Args &&...args)
+{
+    writeLog("DEBUG", format.location, std::format(format.format, std::forward<Args>(args)...));
+}
 
 #endif // LOG_HPP

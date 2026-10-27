@@ -22,15 +22,15 @@
 
 void UsbActions::applyConfig(const std::string &config_file)
 {
-    LOG_INFO("Not implemented yet: apply config ", config_file);
+    logInfo("Not implemented yet: apply config {}", config_file);
 }
 
 void UsbActions::updatePlayer(const std::string &firmware_file)
 {
-    LOG_INFO("Not implemented yet: update player with ", firmware_file);
+    logInfo("Not implemented yet: update player with {}", firmware_file);
 }
 
 void UsbActions::playSmil(const std::string &smil_index)
 {
-    LOG_INFO("Not implemented yet: pass ", smil_index, " to the player");
+    logInfo("Not implemented yet: pass {} to the player", smil_index);
 }

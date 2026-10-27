@@ -20,6 +20,7 @@
 
 #include <charconv>
 #include <stdexcept>
+#include "log.hpp"
 
 Configuration::Configuration() = default;
 
@@ -28,7 +29,7 @@ void Configuration::readLibConfigValues(const libconfig::Config *config)
     try
     {
 
-        std::cout << "Start read values from config file" << std::endl;
+        logInfo("Start read values from config file");
 
         if (config->exists("app_name"))
             config->lookupValue("app_name", app_name_);
@@ -80,7 +81,7 @@ void Configuration::readLibConfigValues(const libconfig::Config *config)
     }
     catch (const libconfig::ParseException &e)
     {
-        std::cerr << "Parse error at " << e.getFile() << ":" << e.getLine() << " - " << e.getError() << std::endl;
+        logError("Parse error at {}:{} - {}", e.getFile(), e.getLine(), e.getError());
     }
 }
 

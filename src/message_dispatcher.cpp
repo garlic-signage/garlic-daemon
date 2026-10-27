@@ -17,6 +17,7 @@
 *************************************************************************************/
 
 #include "message_dispatcher.hpp"
+#include "log.hpp"
 
 MessageDispatcher::MessageDispatcher(SystemActions &system_actions, Watchdog &watchdog)
     : system_actions_(system_actions), watchdog_(watchdog)
@@ -43,16 +44,16 @@ void MessageDispatcher::dispatch(const std::string &message)
     }
     else
     {
-        std::cerr << "Signale " + message + " is not supported." << std::endl;
+        logWarning("Signal {} is not supported.", message);
     }
 }
 
 void MessageDispatcher::installApp()
 {
-    std::cerr << "install apps not yet implemented." << std::endl;
+    logInfo("Not implemented yet: install app");
 }
 
 void MessageDispatcher::removeApp()
 {
-    std::cerr << "install apps not yet implemented." << std::endl;
+    logInfo("Not implemented yet: remove app");
 }

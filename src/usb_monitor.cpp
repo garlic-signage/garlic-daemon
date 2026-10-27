@@ -49,14 +49,14 @@ void UsbMonitor::run(std::stop_token stop_token)
     udev *udev_context = udev_new();
     if (udev_context == nullptr)
     {
-        LOG_ERROR("Cannot create udev context, USB sticks will not be mounted.");
+        logError("Cannot create udev context, USB sticks will not be mounted.");
         return;
     }
 
     udev_monitor *monitor = udev_monitor_new_from_netlink(udev_context, "udev");
     if (monitor == nullptr)
     {
-        LOG_ERROR("Cannot create udev monitor, USB sticks will not be mounted.");
+        logError("Cannot create udev monitor, USB sticks will not be mounted.");
         udev_unref(udev_context);
         return;
     }
@@ -92,7 +92,7 @@ void UsbMonitor::deviceAdded(const std::string &device_node, const std::string &
 
     if (!SUPPORTED_FILESYSTEMS.contains(fs_type))
     {
-        LOG_WARNING("USB device ", device_node, " has unsupported filesystem '", fs_type, "', not mounted.");
+        logWarning("USB device {} has unsupported filesystem '{}', not mounted.", device_node, fs_type);
         return;
     }
 
@@ -101,7 +101,7 @@ void UsbMonitor::deviceAdded(const std::string &device_node, const std::string &
     std::filesystem::create_directories(mount_point, error);
     if (error)
     {
-        LOG_ERROR("Cannot create ", mount_point, ": ", error.message());
+        logError("Cannot create {}: {}", mount_point, error.message());
         return;
     }
 
@@ -112,7 +112,7 @@ void UsbMonitor::deviceAdded(const std::string &device_node, const std::string &
     }
 
     mounted_[device_node] = mount_point;
-    LOG_INFO("Mounted USB device ", device_node, " to ", mount_point);
+    logInfo("Mounted USB device {} to {}", device_node, mount_point);
     content_handler_.handle(mount_point);
 }
 
@@ -125,7 +125,7 @@ void UsbMonitor::deviceRemoved(const std::string &device_node)
     system_actions_.unmount(entry->second);
     std::error_code error;
     std::filesystem::remove(entry->second, error); // only removes an empty directory
-    LOG_INFO("Unmounted USB device ", device_node, " from ", entry->second);
+    logInfo("Unmounted USB device {} from {}", device_node, entry->second);
     mounted_.erase(entry);
 }
 

@@ -20,7 +20,6 @@
 #define MESSAGEDISPATCHER_H
 
 #include <string>
-#include <iostream>
 #include "system_actions.hpp"
 #include "watchdog.hpp"
 

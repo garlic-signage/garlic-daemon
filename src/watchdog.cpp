@@ -54,7 +54,7 @@ void Watchdog::check()
 
     if (isRunning() && isHanging())
     {
-        LOG_WARNING(player_name_, " sent no heartbeat for ", heartbeat_timeout_.count(), " seconds, restart it.");
+        logWarning("{} sent no heartbeat for {} seconds, restart it.", player_name_, heartbeat_timeout_.count());
         stop();
         playerEnded(); // a hang counts like a crash
     }
@@ -130,7 +130,7 @@ void Watchdog::start()
         passwd *pw = getpwnam(player_user_.c_str());
         if (pw == nullptr)
         {
-            LOG_ERROR("User ", player_user_, " does not exist, cannot start ", player_name_);
+            logError("User {} does not exist, cannot start {}", player_user_, player_name_);
             return;
         }
         uid  = pw->pw_uid;
@@ -173,7 +173,7 @@ void Watchdog::start()
     pid_t pid = fork();
     if (pid < 0)
     {
-        LOG_ERROR("Cannot start ", player_name_, ": ", strerror(errno));
+        logError("Cannot start {}: {}", player_name_, strerror(errno));
         return;
     }
 
@@ -200,7 +200,7 @@ void Watchdog::start()
     player_pid_     = pid;
     started_at_     = std::chrono::steady_clock::now();
     last_heartbeat_ = started_at_; // the startup time counts like a heartbeat
-    LOG_INFO("Started ", player_name_, " with pid ", pid, ": ", player_command_);
+    logInfo("Started {} with pid {}: {}", player_name_, pid, player_command_);
 }
 
 /**
@@ -219,7 +219,7 @@ void Watchdog::stop()
     {
         if (std::chrono::steady_clock::now() >= deadline)
         {
-            LOG_WARNING(player_name_, " does not stop, send SIGKILL.");
+            logWarning("{} does not stop, send SIGKILL.", player_name_);
             kill(-player_pid_, SIGKILL);
             waitpid(player_pid_, nullptr, 0);
             break;
@@ -228,7 +228,7 @@ void Watchdog::stop()
     }
 
     kill(-player_pid_, SIGKILL); // processes of the group that ignored SIGTERM
-    LOG_INFO("Stopped ", player_name_, " with pid ", player_pid_);
+    logInfo("Stopped {} with pid {}", player_name_, player_pid_);
     player_pid_ = -1;
 }
 
@@ -249,9 +249,9 @@ bool Watchdog::isRunning()
     if (result == player_pid_)
     {
         if (WIFEXITED(status))
-            LOG_WARNING(player_name_, " exited with code ", WEXITSTATUS(status));
+            logWarning("{} exited with code {}", player_name_, WEXITSTATUS(status));
         else if (WIFSIGNALED(status))
-            LOG_WARNING(player_name_, " was killed by signal ", WTERMSIG(status));
+            logWarning("{} was killed by signal {}", player_name_, WTERMSIG(status));
     }
     kill(-player_pid_, SIGKILL); // processes of a start script that are still left
     player_pid_ = -1;
@@ -280,8 +280,8 @@ void Watchdog::playerEnded()
 
     next_start_ = now + restartDelay(crash_count_);
     if (crash_count_ > 0)
-        LOG_WARNING(player_name_, " crashed ", crash_count_, " times in a row, next start in ",
-                    restartDelay(crash_count_).count(), " seconds.");
+        logWarning("{} crashed {} times in a row, next start in {} seconds.", player_name_, crash_count_,
+                   restartDelay(crash_count_).count());
 
     if (reboot_after_crashes_ > 0 && crash_count_ >= reboot_after_crashes_)
         rebootIfAllowed();
@@ -304,8 +304,8 @@ void Watchdog::rebootIfAllowed()
         // Also true for a negative value, i.e. the clock went back (e.g. no RTC). Then rather do not reboot.
         if (since_last_reboot < REBOOT_INTERVAL)
         {
-            LOG_WARNING("No reboot, the watchdog already rebooted within the last ",
-                        std::chrono::duration_cast<std::chrono::hours>(REBOOT_INTERVAL).count(), " hours.");
+            logWarning("No reboot, the watchdog already rebooted within the last {} hours.",
+                       std::chrono::duration_cast<std::chrono::hours>(REBOOT_INTERVAL).count());
             return;
         }
     }
@@ -316,11 +316,11 @@ void Watchdog::rebootIfAllowed()
     stamp << std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count() << std::endl;
     if (!stamp)
     {
-        LOG_ERROR("No reboot, cannot write ", reboot_stamp_file_);
+        logError("No reboot, cannot write {}", reboot_stamp_file_);
         return;
     }
     stamp.close();
 
-    LOG_ERROR(player_name_, " crashed ", crash_count_, " times in a row, reboot the system.");
+    logError("{} crashed {} times in a row, reboot the system.", player_name_, crash_count_);
     system_actions_.reboot();
 }

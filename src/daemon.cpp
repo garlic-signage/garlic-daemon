@@ -71,7 +71,7 @@ void Daemon::stop()
 void Daemon::reload()
 {
     // ToDo: reread the configuration
-    LOG_INFO("Reload called.");
+    logInfo("Reload called.");
 }
 
 void Daemon::blockSignals()
@@ -89,7 +89,7 @@ void Daemon::waitForTerminationSignal()
         if (sigwait(&signals, &signal_number) != 0)
             continue;
 
-        LOG_INFO("Signal number [", signal_number, "] received.");
+        logInfo("Signal number [{}] received.", signal_number);
         if (signal_number == SIGHUP)
         {
             reload();
@@ -111,7 +111,7 @@ void Daemon::loopWatchdog(std::stop_token stop_token)
         // Like sleep_for(), but returns immediately when a stop is requested
         watchdog_cv_.wait_for(lock, stop_token, std::chrono::seconds(WATCHDOG_TIMER), [] { return false; });
     }
-    std::cout << "Finish watchdog thread." << std::endl;
+    logInfo("Finish watchdog thread.");
 }
 
 void Daemon::loopMessageListener()
@@ -120,9 +120,9 @@ void Daemon::loopMessageListener()
     while (socket_server_.waitForMessage(message))
     {
         if (message != "heartbeat") // comes every few seconds and would flood the log
-            std::cout << "Received message: " << message << std::endl;
+            logInfo("Received message: {}", message);
 
         dispatcher_.dispatch(message);
     }
-    std::cout << "Finish message listener thread." << std::endl;
+    logInfo("Finish message listener thread.");
 }
