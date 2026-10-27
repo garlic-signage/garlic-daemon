@@ -31,8 +31,8 @@ class CmdParser
         std::string getConfigFilePath();
 
     private:
-        std::string configFileName;
-        std::vector<std::string> m_tokens;
+        std::string config_file_name_;
+        std::vector<std::string> tokens_;
         [[nodiscard]] const std::string &getCmdOptionValue(const std::string &option) const;
         [[nodiscard]] bool cmdOptionExist(const std::string &option) const;
 };

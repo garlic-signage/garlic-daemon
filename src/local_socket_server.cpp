@@ -30,7 +30,7 @@
 #include "log.hpp"
 
 LocalSocketServer::LocalSocketServer(const std::string &socket_path, uid_t allowed_uid)
-    : socket_path(socket_path), allowed_uid(allowed_uid)
+    : socket_path_(socket_path), allowed_uid_(allowed_uid)
 {
     sockaddr_un address{};
     address.sun_family = AF_UNIX;
@@ -38,15 +38,15 @@ LocalSocketServer::LocalSocketServer(const std::string &socket_path, uid_t allow
         throw std::runtime_error("Socket path too long: " + socket_path);
     std::strcpy(address.sun_path, socket_path.c_str());
 
-    listen_fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
-    if (listen_fd < 0)
+    listen_fd_ = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+    if (listen_fd_ < 0)
         throw std::runtime_error(std::string("Cannot create socket: ") + strerror(errno));
 
     unlink(socket_path.c_str()); // old socket file, e.g. after a crash
-    if (bind(listen_fd, reinterpret_cast<sockaddr *>(&address), sizeof(address)) != 0 || listen(listen_fd, 5) != 0)
+    if (bind(listen_fd_, reinterpret_cast<sockaddr *>(&address), sizeof(address)) != 0 || listen(listen_fd_, 5) != 0)
     {
         std::string error = strerror(errno);
-        close(listen_fd);
+        close(listen_fd_);
         throw std::runtime_error("Cannot create socket " + socket_path + ": " + error);
     }
 
@@ -56,57 +56,57 @@ LocalSocketServer::LocalSocketServer(const std::string &socket_path, uid_t allow
 
 LocalSocketServer::~LocalSocketServer()
 {
-    server_thread.request_stop();
-    if (server_thread.joinable())
-        server_thread.join();
+    server_thread_.request_stop();
+    if (server_thread_.joinable())
+        server_thread_.join();
 
-    for (const Client &client : clients)
+    for (const Client &client : clients_)
         close(client.fd);
-    close(listen_fd);
-    unlink(socket_path.c_str());
+    close(listen_fd_);
+    unlink(socket_path_.c_str());
 }
 
 void LocalSocketServer::start()
 {
-    server_thread = std::jthread([this](std::stop_token stop_token) { loop(stop_token); });
+    server_thread_ = std::jthread([this](std::stop_token stop_token) { loop(stop_token); });
 }
 
 void LocalSocketServer::stop()
 {
-    server_thread.request_stop();
+    server_thread_.request_stop();
 }
 
 bool LocalSocketServer::pollingQueue(std::string &message)
 {
-    std::unique_lock<std::mutex> lock(mtx);
-    if (queue.empty())
+    std::unique_lock<std::mutex> lock(mtx_);
+    if (queue_.empty())
         return false;
 
-    message = queue.front();
-    queue.pop();
+    message = queue_.front();
+    queue_.pop();
     return true;
 }
 
 bool LocalSocketServer::waitForMessage(std::string &message)
 {
-    std::unique_lock<std::mutex> lock(mtx);
-    std::stop_token stop_token = server_thread.get_stop_token();
-    cv.wait(lock, stop_token, [this] { return !queue.empty(); });
+    std::unique_lock<std::mutex> lock(mtx_);
+    std::stop_token stop_token = server_thread_.get_stop_token();
+    cv_.wait(lock, stop_token, [this] { return !queue_.empty(); });
 
     // After a stop no more messages are handed out, even if some are still queued
     if (stop_token.stop_requested())
         return false;
 
-    message = queue.front();
-    queue.pop();
+    message = queue_.front();
+    queue_.pop();
     return true;
 }
 
 void LocalSocketServer::send(const std::string &message)
 {
     std::string line = message + "\n";
-    std::lock_guard<std::mutex> lock(clients_mtx);
-    for (const Client &client : clients)
+    std::lock_guard<std::mutex> lock(clients_mtx_);
+    for (const Client &client : clients_)
     {
         // MSG_NOSIGNAL: no SIGPIPE when the client is gone, the server thread removes it then
         if (::send(client.fd, line.data(), line.size(), MSG_NOSIGNAL | MSG_DONTWAIT) < 0)
@@ -122,10 +122,10 @@ void LocalSocketServer::loop(std::stop_token stop_token)
 {
     while (!stop_token.stop_requested())
     {
-        std::vector<pollfd> fds = {{listen_fd, POLLIN, 0}};
+        std::vector<pollfd> fds = {{listen_fd_, POLLIN, 0}};
         {
-            std::lock_guard<std::mutex> lock(clients_mtx);
-            for (const Client &client : clients)
+            std::lock_guard<std::mutex> lock(clients_mtx_);
+            for (const Client &client : clients_)
                 fds.push_back({client.fd, POLLIN, 0});
         }
 
@@ -135,17 +135,17 @@ void LocalSocketServer::loop(std::stop_token stop_token)
         if (fds[0].revents & POLLIN)
             acceptClient();
 
-        std::lock_guard<std::mutex> lock(clients_mtx);
+        std::lock_guard<std::mutex> lock(clients_mtx_);
         for (size_t i = 1; i < fds.size(); i++)
         {
             if (fds[i].revents == 0)
                 continue;
 
-            auto client = std::ranges::find(clients, fds[i].fd, &Client::fd);
-            if (client != clients.end() && !readClient(*client))
+            auto client = std::ranges::find(clients_, fds[i].fd, &Client::fd);
+            if (client != clients_.end() && !readClient(*client))
             {
                 close(client->fd);
-                clients.erase(client);
+                clients_.erase(client);
                 LOG_INFO("Client disconnected.");
             }
         }
@@ -155,7 +155,7 @@ void LocalSocketServer::loop(std::stop_token stop_token)
 
 void LocalSocketServer::acceptClient()
 {
-    int fd = accept4(listen_fd, nullptr, nullptr, SOCK_CLOEXEC);
+    int fd = accept4(listen_fd_, nullptr, nullptr, SOCK_CLOEXEC);
     if (fd < 0)
         return;
 
@@ -165,8 +165,8 @@ void LocalSocketServer::acceptClient()
         return;
     }
 
-    std::lock_guard<std::mutex> lock(clients_mtx);
-    clients.push_back({fd, ""});
+    std::lock_guard<std::mutex> lock(clients_mtx_);
+    clients_.push_back({fd, ""});
     LOG_INFO("Client connected.");
 }
 
@@ -213,7 +213,7 @@ bool LocalSocketServer::isAllowed(int fd) const
     if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &credentials, &length) != 0)
         return false;
 
-    if (credentials.uid == 0 || credentials.uid == allowed_uid)
+    if (credentials.uid == 0 || credentials.uid == allowed_uid_)
         return true;
 
     LOG_WARNING("Rejected connection from uid ", credentials.uid, " (pid ", credentials.pid, ")");
@@ -222,7 +222,7 @@ bool LocalSocketServer::isAllowed(int fd) const
 
 void LocalSocketServer::push(const std::string &message)
 {
-    std::lock_guard<std::mutex> lock(mtx);
-    queue.push(message);
-    cv.notify_one();
+    std::lock_guard<std::mutex> lock(mtx_);
+    queue_.push(message);
+    cv_.notify_one();
 }

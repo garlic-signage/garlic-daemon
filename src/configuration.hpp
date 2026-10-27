@@ -58,17 +58,17 @@ class Configuration
         const std::string USB_MOUNT_DIR     = "/media/garlic";
         const std::string USB_FIRMWARE_FILE = "garlic-player.AppImage";
 
-        std::string app_name       = APP_NAME;
-        std::string socket_path    = SOCKET_PATH;
-        std::string state_dir      = STATE_DIR;
-        std::string player_name    = PLAYER_NAME;
-        std::string player_command = PLAYER_COMMAND;
-        std::string player_user    = PLAYER_USER;
-        std::vector<std::string> player_environment;
-        int heartbeat_timeout         = HEARTBEAT_TIMEOUT;
-        int reboot_after_crashes      = REBOOT_AFTER_CRASHES;
-        std::string usb_mount_dir     = USB_MOUNT_DIR;
-        std::string usb_firmware_file = USB_FIRMWARE_FILE;
+        std::string app_name_       = APP_NAME;
+        std::string socket_path_    = SOCKET_PATH;
+        std::string state_dir_      = STATE_DIR;
+        std::string player_name_    = PLAYER_NAME;
+        std::string player_command_ = PLAYER_COMMAND;
+        std::string player_user_    = PLAYER_USER;
+        std::vector<std::string> player_environment_;
+        int heartbeat_timeout_         = HEARTBEAT_TIMEOUT;
+        int reboot_after_crashes_      = REBOOT_AFTER_CRASHES;
+        std::string usb_mount_dir_     = USB_MOUNT_DIR;
+        std::string usb_firmware_file_ = USB_FIRMWARE_FILE;
 };
 
 #endif // CONFIGURATION_HPP

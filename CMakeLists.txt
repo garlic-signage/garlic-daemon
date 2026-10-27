@@ -12,6 +12,13 @@ if (NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_VERSION VERSI
     message(FATAL_ERROR "GCC 14 or newer is required, found ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 endif ()
 
+# Warnings for the daemon and the tests. GCC 14 must build without any warning, see CONVENTIONS.md.
+add_compile_options(-Wall -Wextra -Wpedantic -Wshadow -Wconversion)
+option(WARNINGS_AS_ERRORS "Treat compiler warnings as errors, e.g. in CI" OFF)
+if (WARNINGS_AS_ERRORS)
+    add_compile_options(-Werror)
+endif ()
+
 if (CMAKE_BUILD_TYPE STREQUAL "Release")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s")
 endif ()

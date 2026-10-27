@@ -21,7 +21,7 @@
 #include "log.hpp"
 
 UsbContentHandler::UsbContentHandler(const Configuration &configuration, UsbActions &actions)
-    : firmware_file(configuration.getUsbFirmwareFile()), actions(actions)
+    : firmware_file_(configuration.getUsbFirmwareFile()), actions_(actions)
 {
 }
 
@@ -47,11 +47,11 @@ void UsbContentHandler::handle(const std::filesystem::path &root)
     LOG_INFO("Look for files on USB stick ", root.string());
 
     if (isFileOnStick(root, CONFIG_XML))
-        actions.applyConfig((root / CONFIG_XML).string());
+        actions_.applyConfig((root / CONFIG_XML).string());
 
-    if (isFileOnStick(root, firmware_file))
-        actions.updatePlayer((root / firmware_file).string());
+    if (isFileOnStick(root, firmware_file_))
+        actions_.updatePlayer((root / firmware_file_).string());
 
     if (isFileOnStick(root, SMIL_INDEX))
-        actions.playSmil((root / SMIL_INDEX).string());
+        actions_.playSmil((root / SMIL_INDEX).string());
 }

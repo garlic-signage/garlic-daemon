@@ -22,7 +22,7 @@ CmdParser::CmdParser(const int argc, char **argv)
 {
     for (int i = 1; i < argc; i++)
     {
-        this->m_tokens.emplace_back(argv[i]);
+        tokens_.emplace_back(argv[i]);
     }
 }
 
@@ -31,21 +31,21 @@ bool CmdParser::checkForConfigOption()
     if (!cmdOptionExist("--config"))
         return false;
 
-    configFileName = getCmdOptionValue("--config");
-    LOG_INFO("Config file name = ", configFileName);
+    config_file_name_ = getCmdOptionValue("--config");
+    LOG_INFO("Config file name = ", config_file_name_);
 
     return true;
 }
 
 std::string CmdParser::getConfigFilePath()
 {
-    return configFileName;
+    return config_file_name_;
 }
 
 const std::string &CmdParser::getCmdOptionValue(const std::string &option) const
 {
-    auto it = std::ranges::find(this->m_tokens, option);
-    if (it != this->m_tokens.end() && ++it != this->m_tokens.end())
+    auto it = std::ranges::find(tokens_, option);
+    if (it != tokens_.end() && ++it != tokens_.end())
     {
         return *it;
     }
@@ -55,6 +55,6 @@ const std::string &CmdParser::getCmdOptionValue(const std::string &option) const
 
 bool CmdParser::cmdOptionExist(const std::string &option) const
 {
-    const auto it = std::ranges::find(this->m_tokens, option);
-    return (it != this->m_tokens.end());
+    const auto it = std::ranges::find(tokens_, option);
+    return (it != tokens_.end());
 }

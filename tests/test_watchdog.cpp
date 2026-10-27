@@ -19,11 +19,13 @@
 #include <gtest/gtest.h>
 #include <chrono>
 #include <csignal>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <thread>
 #include "watchdog.hpp"
 #include "fake_system_actions.hpp"
+#include "current_user.hpp"
 
 namespace fs = std::filesystem;
 using namespace std::chrono_literals;
@@ -50,7 +52,8 @@ class WatchdogTest : public ::testing::Test
         Configuration makeConfiguration(const std::string &player_settings) const
         {
             libconfig::Config config;
-            config.readString("state_dir = \"" + tmp_dir.string() + "\"; Player = { " + player_settings + " };");
+            config.readString("state_dir = \"" + tmp_dir.string() + "\"; Player = { user = \"" + currentUser() +
+                              "\"; " + player_settings + " };");
             Configuration configuration;
             configuration.readLibConfigValues(&config);
             return configuration;
@@ -60,7 +63,9 @@ class WatchdogTest : public ::testing::Test
         static void crashPlayer(Watchdog &watchdog)
         {
             watchdog.check();
-            kill(watchdog.getPlayerPid(), SIGKILL);
+            pid_t pid = watchdog.getPlayerPid();
+            ASSERT_GT(pid, 0); // kill(-1) would kill all processes of the user
+            kill(pid, SIGKILL);
             std::this_thread::sleep_for(100ms);
             watchdog.check(); // notices the crash
         }
@@ -74,7 +79,7 @@ class WatchdogTest : public ::testing::Test
         }
 
         // true if a process with this pid exists
-        static bool processExists(pid_t pid) { return kill(pid, 0) == 0; }
+        static bool processExists(pid_t pid) { return pid > 0 && kill(pid, 0) == 0; }
 
         // Reads a file written by the test command, waits at most 2 seconds for it
         static std::string readFileWithTimeout(const fs::path &file)
@@ -119,6 +124,7 @@ TEST_F(WatchdogTest, CrashedPlayerIsRestartedAfterBackoff)
     watchdog.check();
     pid_t first_pid = watchdog.getPlayerPid();
 
+    ASSERT_GT(first_pid, 0);  // kill(-1) would kill all processes of the user
     kill(first_pid, SIGKILL); // simulates a crash shortly after the start
     std::this_thread::sleep_for(100ms);
     watchdog.check();
@@ -275,7 +281,7 @@ TEST_F(WatchdogTest, CrashLoopRebootsAndStoresTime)
     long long stored = 0;
     std::ifstream(tmp_dir / "last_reboot") >> stored;
     auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch());
-    EXPECT_NEAR(stored, now.count(), 5);
+    EXPECT_LE(std::abs(stored - now.count()), 5); // seconds
 }
 
 TEST_F(WatchdogTest, NoRebootBeforeCrashLimit)
@@ -329,8 +335,8 @@ TEST_F(WatchdogTest, NoRebootWhenClockWentBack)
 TEST_F(WatchdogTest, NoRebootWhenTimeCannotBeStored)
 {
     libconfig::Config config;
-    config.readString("state_dir = \"" + (tmp_dir / "does-not-exist").string() +
-                      "\"; Player = { command = \"sleep 30\"; reboot_after_crashes = 1; };");
+    config.readString("state_dir = \"" + (tmp_dir / "does-not-exist").string() + "\"; Player = { user = \"" +
+                      currentUser() + "\"; command = \"sleep 30\"; reboot_after_crashes = 1; };");
     Configuration configuration;
     configuration.readLibConfigValues(&config);
     Watchdog watchdog(configuration, system_actions);

@@ -64,16 +64,16 @@ class Daemon
     private:
         static constexpr int WATCHDOG_TIMER = 5; // seconds between two watchdog checks
 
-        Watchdog &watchdog;
-        LocalSocketServer &socket_server;
-        MessageDispatcher &dispatcher;
-        UsbMonitor &usb_monitor;
+        Watchdog &watchdog_;
+        LocalSocketServer &socket_server_;
+        MessageDispatcher &dispatcher_;
+        UsbMonitor &usb_monitor_;
 
-        std::mutex watchdog_mutex;
-        std::condition_variable_any watchdog_cv;
-        std::jthread watchdog_thread; // threads are the last members, so they are destroyed first
-        std::jthread listener_thread;
-        std::jthread usb_thread;
+        std::mutex watchdog_mutex_;
+        std::condition_variable_any watchdog_cv_;
+        std::jthread watchdog_thread_; // threads are the last members, so they are destroyed first
+        std::jthread listener_thread_;
+        std::jthread usb_thread_;
 
         void loopWatchdog(std::stop_token stop_token);
         void loopMessageListener();

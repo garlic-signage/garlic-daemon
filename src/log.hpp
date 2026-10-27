@@ -52,13 +52,13 @@ struct Log
 {
         std::ostream &out;
 
-        Log(std::ostream &out, const char *type, const char *functionName, int line) : out(out)
+        Log(std::ostream &stream, const char *type, const char *functionName, int line) : out(stream)
         {
             out << getLogTime(std::chrono::system_clock::now()) << " " << type << " " << line << ":" << functionName
                 << "()-> ";
         }
 
-        Log(std::ostream &out, const char *type) : out(out)
+        Log(std::ostream &stream, const char *type) : out(stream)
         {
             out << getLogTime(std::chrono::system_clock::now()) << " " << type << "-> ";
         }

@@ -19,6 +19,7 @@
 #include <gtest/gtest.h>
 #include "message_dispatcher.hpp"
 #include "fake_system_actions.hpp"
+#include "current_user.hpp"
 #include <thread>
 
 using namespace std::chrono_literals;
@@ -63,7 +64,7 @@ TEST(MessageDispatcher, UnknownMessagesDoNotReboot)
 TEST(MessageDispatcher, HeartbeatMessageResetsWatchdogTimeout)
 {
     libconfig::Config config;
-    config.readString("Player = { command = \"sleep 30\"; heartbeat_timeout = 1; };");
+    config.readString("Player = { user = \"" + currentUser() + "\"; command = \"sleep 30\"; heartbeat_timeout = 1; };");
     Configuration configuration;
     configuration.readLibConfigValues(&config);
 

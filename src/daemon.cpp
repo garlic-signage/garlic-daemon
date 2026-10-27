@@ -37,7 +37,7 @@ sigset_t daemonSignals()
 
 Daemon::Daemon(Watchdog &watchdog, LocalSocketServer &socket_server, MessageDispatcher &dispatcher,
                UsbMonitor &usb_monitor)
-    : watchdog(watchdog), socket_server(socket_server), dispatcher(dispatcher), usb_monitor(usb_monitor)
+    : watchdog_(watchdog), socket_server_(socket_server), dispatcher_(dispatcher), usb_monitor_(usb_monitor)
 {
 }
 
@@ -51,10 +51,10 @@ Daemon::~Daemon()
 
 void Daemon::start()
 {
-    socket_server.start();
-    watchdog_thread = std::jthread([this](std::stop_token stop_token) { loopWatchdog(stop_token); });
-    listener_thread = std::jthread([this] { loopMessageListener(); });
-    usb_thread      = std::jthread([this](std::stop_token stop_token) { usb_monitor.run(stop_token); });
+    socket_server_.start();
+    watchdog_thread_ = std::jthread([this](std::stop_token stop_token) { loopWatchdog(stop_token); });
+    listener_thread_ = std::jthread([this] { loopMessageListener(); });
+    usb_thread_      = std::jthread([this](std::stop_token stop_token) { usb_monitor_.run(stop_token); });
 }
 
 /**
@@ -63,9 +63,9 @@ void Daemon::start()
  */
 void Daemon::stop()
 {
-    socket_server.stop();
-    watchdog_thread.request_stop();
-    usb_thread.request_stop();
+    socket_server_.stop();
+    watchdog_thread_.request_stop();
+    usb_thread_.request_stop();
 }
 
 void Daemon::reload()
@@ -103,13 +103,13 @@ void Daemon::waitForTerminationSignal()
 
 void Daemon::loopWatchdog(std::stop_token stop_token)
 {
-    std::unique_lock<std::mutex> lock(watchdog_mutex);
+    std::unique_lock<std::mutex> lock(watchdog_mutex_);
     while (!stop_token.stop_requested())
     {
-        watchdog.check();
+        watchdog_.check();
 
         // Like sleep_for(), but returns immediately when a stop is requested
-        watchdog_cv.wait_for(lock, stop_token, std::chrono::seconds(WATCHDOG_TIMER), [] { return false; });
+        watchdog_cv_.wait_for(lock, stop_token, std::chrono::seconds(WATCHDOG_TIMER), [] { return false; });
     }
     std::cout << "Finish watchdog thread." << std::endl;
 }
@@ -117,12 +117,12 @@ void Daemon::loopWatchdog(std::stop_token stop_token)
 void Daemon::loopMessageListener()
 {
     std::string message;
-    while (socket_server.waitForMessage(message))
+    while (socket_server_.waitForMessage(message))
     {
         if (message != "heartbeat") // comes every few seconds and would flood the log
             std::cout << "Received message: " << message << std::endl;
 
-        dispatcher.dispatch(message);
+        dispatcher_.dispatch(message);
     }
     std::cout << "Finish message listener thread." << std::endl;
 }

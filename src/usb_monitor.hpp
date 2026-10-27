@@ -65,10 +65,10 @@ class UsbMonitor
         /// Filesystems of USB sticks, others (e.g. swap, encrypted) are not mounted
         const std::set<std::string> SUPPORTED_FILESYSTEMS = {"vfat", "exfat", "ntfs3", "ext2", "ext3", "ext4"};
 
-        std::string mount_dir;
-        SystemActions &system_actions;
-        UsbContentHandler &content_handler;
-        std::map<std::string, std::string> mounted; // device node -> mount point
+        std::string mount_dir_;
+        SystemActions &system_actions_;
+        UsbContentHandler &content_handler_;
+        std::map<std::string, std::string> mounted_; // device node -> mount point
 
         void addPluggedDevices(udev *udev_context);
         void handleDevice(udev_device *device);

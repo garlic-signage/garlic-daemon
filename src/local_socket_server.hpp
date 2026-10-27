@@ -75,17 +75,17 @@ class LocalSocketServer
                 std::string buffer; // received data without a complete line yet
         };
 
-        std::string socket_path;
-        uid_t allowed_uid;
-        int listen_fd = -1;
+        std::string socket_path_;
+        uid_t allowed_uid_;
+        int listen_fd_ = -1;
 
-        std::mutex clients_mtx; // the server thread changes the clients, send() writes to them
-        std::vector<Client> clients;
+        std::mutex clients_mtx_; // the server thread changes the clients, send() writes to them
+        std::vector<Client> clients_;
 
-        std::mutex mtx;
-        std::queue<std::string> queue;
-        std::condition_variable_any cv;
-        std::jthread server_thread; // last member, so it is destroyed first
+        std::mutex mtx_;
+        std::queue<std::string> queue_;
+        std::condition_variable_any cv_;
+        std::jthread server_thread_; // last member, so it is destroyed first
 
         void loop(std::stop_token stop_token);
         void acceptClient();

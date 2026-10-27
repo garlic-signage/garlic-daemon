@@ -35,7 +35,7 @@ std::string property(udev_device *device, const char *name)
 
 UsbMonitor::UsbMonitor(const Configuration &configuration, SystemActions &system_actions,
                        UsbContentHandler &content_handler)
-    : mount_dir(configuration.getUsbMountDir()), system_actions(system_actions), content_handler(content_handler)
+    : mount_dir_(configuration.getUsbMountDir()), system_actions_(system_actions), content_handler_(content_handler)
 {
 }
 
@@ -87,7 +87,7 @@ void UsbMonitor::run(std::stop_token stop_token)
 
 void UsbMonitor::deviceAdded(const std::string &device_node, const std::string &fs_type)
 {
-    if (mounted.contains(device_node))
+    if (mounted_.contains(device_node))
         return;
 
     if (!SUPPORTED_FILESYSTEMS.contains(fs_type))
@@ -96,7 +96,7 @@ void UsbMonitor::deviceAdded(const std::string &device_node, const std::string &
         return;
     }
 
-    std::string mount_point = mount_dir + "/" + std::filesystem::path(device_node).filename().string();
+    std::string mount_point = mount_dir_ + "/" + std::filesystem::path(device_node).filename().string();
     std::error_code error;
     std::filesystem::create_directories(mount_point, error);
     if (error)
@@ -105,28 +105,28 @@ void UsbMonitor::deviceAdded(const std::string &device_node, const std::string &
         return;
     }
 
-    if (!system_actions.mount(device_node, mount_point, fs_type))
+    if (!system_actions_.mount(device_node, mount_point, fs_type))
     {
         std::filesystem::remove(mount_point, error);
         return;
     }
 
-    mounted[device_node] = mount_point;
+    mounted_[device_node] = mount_point;
     LOG_INFO("Mounted USB device ", device_node, " to ", mount_point);
-    content_handler.handle(mount_point);
+    content_handler_.handle(mount_point);
 }
 
 void UsbMonitor::deviceRemoved(const std::string &device_node)
 {
-    auto entry = mounted.find(device_node);
-    if (entry == mounted.end())
+    auto entry = mounted_.find(device_node);
+    if (entry == mounted_.end())
         return;
 
-    system_actions.unmount(entry->second);
+    system_actions_.unmount(entry->second);
     std::error_code error;
     std::filesystem::remove(entry->second, error); // only removes an empty directory
     LOG_INFO("Unmounted USB device ", device_node, " from ", entry->second);
-    mounted.erase(entry);
+    mounted_.erase(entry);
 }
 
 /**
@@ -182,6 +182,6 @@ void UsbMonitor::handleDevice(udev_device *device)
 
 void UsbMonitor::unmountAll()
 {
-    while (!mounted.empty())
-        deviceRemoved(mounted.begin()->first);
+    while (!mounted_.empty())
+        deviceRemoved(mounted_.begin()->first);
 }

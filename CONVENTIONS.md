@@ -14,7 +14,8 @@ Short and simple rules for the garlic-daemon source code.
   `import std` / modules, `std::flat_map`, `std::mdspan`, `std::stacktrace`.
 - Prefer the C++ standard library over C functions where it offers the same,
   e.g. `std::filesystem` instead of `opendir`, `std::ifstream` instead of `fopen`.
-- System calls without a C++ equivalent (`mq_open`, `reboot`, `mount`, `fork`, ...) are fine.
+- System calls without a C++ equivalent (`socket`, `reboot`, `mount`, `fork`, ...) are fine.
+- Linux only, no other platforms.
 
 ## Simplicity
 
@@ -28,12 +29,20 @@ Short and simple rules for the garlic-daemon source code.
 |--------------------------|-------------------|-----------------------------|
 | Classes                  | `PascalCase`      | `MessageDispatcher`         |
 | Methods, functions       | `camelCase`       | `isPlayerRunning()`         |
-| Member variables         | `snake_case`      | `player_name`               |
+| Private/protected members | `snake_case_`    | `player_name_`              |
+| Public members of structs | `snake_case`     | `Client::fd`                |
 | Local variables, params  | `snake_case`      | `config_file`               |
 | Constants                | `UPPER_CASE`      | `WATCHDOG_TIMER`            |
 | Files                    | `snake_case`      | `message_dispatcher.cpp`    |
 
-If a parameter has the same name as a member, assign with `this->`.
+The trailing `_` of members avoids that a parameter hides a member (`-Wshadow`):
+
+```cpp
+Watchdog::Watchdog(const Configuration &configuration) : player_name_(configuration.getPlayerName()) {}
+void Watchdog::setActivity(bool is_active) { is_active_ = is_active; }
+```
+
+Test fixtures in `tests/` are exempt, their members have no trailing `_`.
 
 ## Rules
 
@@ -42,6 +51,14 @@ If a parameter has the same name as a member, assign with `this->`.
 - Pass and return strings as `const std::string&` when no copy is needed.
 - Every class gets a short doc comment (`/** ... */`) in its header explaining what it does.
 - Every source file starts with the AGPL license header.
+
+## Warnings
+
+The code builds **without any warning** with GCC 14 and these flags (set in `CMakeLists.txt`):
+`-Wall -Wextra -Wpedantic -Wshadow -Wconversion`
+
+- Fix a warning instead of switching it off.
+- `-DWARNINGS_AS_ERRORS=ON` turns warnings into errors, e.g. in CI.
 
 ## Formatting
 

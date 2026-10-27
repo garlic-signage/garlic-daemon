@@ -46,8 +46,8 @@ class UsbContentHandler
         static constexpr auto CONFIG_XML = "config.xml";
         static constexpr auto SMIL_INDEX = "SMIL/index.smil";
 
-        std::string firmware_file;
-        UsbActions &actions;
+        std::string firmware_file_;
+        UsbActions &actions_;
 };
 
 #endif // USB_CONTENT_HANDLER_HPP

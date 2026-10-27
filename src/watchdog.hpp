@@ -84,22 +84,22 @@ class Watchdog
         static constexpr auto BACKOFF_MAX     = std::chrono::seconds(300);
         static constexpr auto REBOOT_INTERVAL = std::chrono::hours(6);
 
-        std::string player_name;
-        std::string player_command;
-        std::string player_user;
-        std::vector<std::string> player_environment;
-        std::chrono::seconds heartbeat_timeout;
-        int reboot_after_crashes;
-        std::string reboot_stamp_file;
-        SystemActions &system_actions;
+        std::string player_name_;
+        std::string player_command_;
+        std::string player_user_;
+        std::vector<std::string> player_environment_;
+        std::chrono::seconds heartbeat_timeout_;
+        int reboot_after_crashes_;
+        std::string reboot_stamp_file_;
+        SystemActions &system_actions_;
 
-        std::mutex mtx;
-        bool is_active   = true;
-        pid_t player_pid = -1;
-        std::chrono::steady_clock::time_point last_heartbeat;
-        std::chrono::steady_clock::time_point started_at;
-        std::chrono::steady_clock::time_point next_start; // backoff: no start before this time
-        int crash_count = 0;                              // crashes in a row
+        std::mutex mtx_;
+        bool is_active_   = true;
+        pid_t player_pid_ = -1;
+        std::chrono::steady_clock::time_point last_heartbeat_;
+        std::chrono::steady_clock::time_point started_at_;
+        std::chrono::steady_clock::time_point next_start_; // backoff: no start before this time
+        int crash_count_ = 0;                              // crashes in a row
 
         // The following methods expect that mtx is locked
         void start();

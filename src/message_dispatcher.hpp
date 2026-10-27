@@ -40,8 +40,8 @@ class MessageDispatcher
         const std::string INSTALL_APP = "install_app";
         const std::string REMOVE_APP  = "remove_app";
 
-        SystemActions &MySystemActions;
-        Watchdog &watchdog;
+        SystemActions &system_actions_;
+        Watchdog &watchdog_;
 
         static void installApp();
         void removeApp();

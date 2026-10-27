@@ -146,6 +146,8 @@ ctest --test-dir build --output-on-failure
 
 Without tests: `cmake -S . -B build -DBUILD_TESTS=OFF`
 
+Warnings as errors: `cmake -S . -B build -DWARNINGS_AS_ERRORS=ON`. The code must build without warnings, see `CONVENTIONS.md`.
+
 ## Install
 
 ```sh

@@ -19,7 +19,7 @@
 #include "message_dispatcher.hpp"
 
 MessageDispatcher::MessageDispatcher(SystemActions &system_actions, Watchdog &watchdog)
-    : MySystemActions(system_actions), watchdog(watchdog)
+    : system_actions_(system_actions), watchdog_(watchdog)
 {
 }
 
@@ -27,11 +27,11 @@ void MessageDispatcher::dispatch(const std::string &message)
 {
     if (message == HEARTBEAT)
     {
-        watchdog.heartbeat();
+        watchdog_.heartbeat();
     }
     else if (message == REBOOT)
     {
-        MySystemActions.reboot();
+        system_actions_.reboot();
     }
     else if (message == INSTALL_APP)
     {
