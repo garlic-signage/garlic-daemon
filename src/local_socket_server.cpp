@@ -19,8 +19,8 @@
 #include "local_socket_server.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cerrno>
-#include <cstring>
 #include <stdexcept>
 #include <system_error>
 #include <utility>
@@ -38,7 +38,7 @@ LocalSocketServer::LocalSocketServer(const std::string &socket_path, uid_t allow
     address.sun_family = AF_UNIX;
     if (socket_path.size() >= sizeof(address.sun_path))
         throw std::runtime_error("Socket path too long: " + socket_path);
-    std::strcpy(address.sun_path, socket_path.c_str());
+    socket_path.copy(address.sun_path, socket_path.size()); // address{} already has the terminating 0
 
     listen_fd_ = FileDescriptor(socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0));
     if (!listen_fd_.isValid())
@@ -166,12 +166,12 @@ void LocalSocketServer::acceptClient()
  */
 bool LocalSocketServer::readClient(Client &client)
 {
-    char buffer[4096];
-    ssize_t bytes_read = recv(client.fd.get(), buffer, sizeof(buffer), 0);
+    std::array<char, 4096> buffer;
+    ssize_t bytes_read = recv(client.fd.get(), buffer.data(), buffer.size(), 0);
     if (bytes_read <= 0)
         return false;
 
-    client.buffer.append(buffer, bytes_read);
+    client.buffer.append(buffer.data(), static_cast<size_t>(bytes_read));
 
     size_t end;
     while ((end = client.buffer.find('\n')) != std::string::npos)

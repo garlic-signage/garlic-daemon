@@ -19,19 +19,21 @@
 #include "cmd_parser.hpp"
 
 #include <algorithm>
-#include <sstream>
+#include <array>
+#include <format>
+#include <string_view>
 
 namespace
 {
 struct Option
 {
-        const char *name;
-        const char *argument; // nullptr for options without argument
-        const char *description;
+        std::string_view name;
+        std::string_view argument; // empty for options without argument
+        std::string_view description;
 };
 
 // All options of the daemon. The values override the config file.
-constexpr Option OPTIONS[] = {
+constexpr auto OPTIONS = std::to_array<Option>({
     {"--config", "<file>", "read the configuration from file"},
     {"--socket", "<path>", "Unix socket for the player (config: socket)"},
     {"--player-command", "<command>", "command that starts the player (config: Player.command)"},
@@ -39,14 +41,14 @@ constexpr Option OPTIONS[] = {
      "restart the player without heartbeat, 0 = off (config: Player.heartbeat_timeout)"},
     {"--state-dir", "<dir>", "directory for files that survive a reboot (config: state_dir)"},
     {"--usb-mount-dir", "<dir>", "USB sticks are mounted below this directory (config: Usb.mount_dir)"},
-    {"--help", nullptr, "show this help and exit"},
-    {"--version", nullptr, "show the version and exit"},
-};
+    {"--help", "", "show this help and exit"},
+    {"--version", "", "show the version and exit"},
+});
 
 const Option *findOption(const std::string &name)
 {
     auto option = std::ranges::find(OPTIONS, name, &Option::name);
-    return option != std::end(OPTIONS) ? option : nullptr;
+    return option != OPTIONS.end() ? &*option : nullptr;
 }
 } // namespace
 
@@ -62,7 +64,7 @@ CmdParser::CmdParser(int argc, char **argv)
             return;
         }
 
-        if (option->argument == nullptr)
+        if (option->argument.empty())
         {
             values_[token] = "";
             continue;
@@ -70,7 +72,7 @@ CmdParser::CmdParser(int argc, char **argv)
 
         if (i + 1 >= argc)
         {
-            error_ = "option " + token + " needs a value " + option->argument;
+            error_ = std::format("option {} needs a value {}", token, option->argument);
             return;
         }
         values_[token] = argv[++i];
@@ -95,14 +97,14 @@ std::string CmdParser::value(const std::string &option) const
 
 std::string CmdParser::helpText()
 {
-    std::ostringstream text;
-    text << "Usage: garlic-daemon [options]\n\nOptions:\n";
+    std::string text = "Usage: garlic-daemon [options]\n\nOptions:\n";
     for (const Option &option : OPTIONS)
     {
         std::string name =
-            std::string(option.name) + (option.argument != nullptr ? std::string(" ") + option.argument : "");
-        text << "  " << name << std::string(name.size() < 32 ? 32 - name.size() : 1, ' ') << option.description << "\n";
+            option.argument.empty() ? std::string(option.name) : std::format("{} {}", option.name, option.argument);
+        // The descriptions start in one column, a longer name gets at least one space
+        text += std::format("  {:<31} {}\n", name, option.description);
     }
-    text << "\nOptions override the values of the config file.\n";
-    return text.str();
+    text += "\nOptions override the values of the config file.\n";
+    return text;
 }
