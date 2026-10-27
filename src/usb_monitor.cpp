@@ -19,12 +19,25 @@
 #include "usb_monitor.hpp"
 
 #include <filesystem>
+#include <memory>
 #include <poll.h>
 #include <libudev.h>
 #include "log.hpp"
 
 namespace
 {
+/// Deleter for std::unique_ptr, releases a udev object with its unref function
+template <auto unref> struct UdevUnref
+{
+        void operator()(auto *object) const { unref(object); }
+};
+
+// udev objects that release themselves when they go out of scope
+using UdevContext   = std::unique_ptr<udev, UdevUnref<udev_unref>>;
+using UdevMonitor   = std::unique_ptr<udev_monitor, UdevUnref<udev_monitor_unref>>;
+using UdevEnumerate = std::unique_ptr<udev_enumerate, UdevUnref<udev_enumerate_unref>>;
+using UdevDevice    = std::unique_ptr<udev_device, UdevUnref<udev_device_unref>>;
+
 /// Returns a udev property or "" if it does not exist
 std::string property(udev_device *device, const char *name)
 {
@@ -46,43 +59,36 @@ UsbMonitor::~UsbMonitor()
 
 void UsbMonitor::run(std::stop_token stop_token)
 {
-    udev *udev_context = udev_new();
-    if (udev_context == nullptr)
+    UdevContext udev_context(udev_new());
+    if (!udev_context)
     {
         logError("Cannot create udev context, USB sticks will not be mounted.");
         return;
     }
 
-    udev_monitor *monitor = udev_monitor_new_from_netlink(udev_context, "udev");
-    if (monitor == nullptr)
+    UdevMonitor monitor(udev_monitor_new_from_netlink(udev_context.get(), "udev"));
+    if (!monitor)
     {
         logError("Cannot create udev monitor, USB sticks will not be mounted.");
-        udev_unref(udev_context);
         return;
     }
-    udev_monitor_filter_add_match_subsystem_devtype(monitor, "block", nullptr);
-    udev_monitor_enable_receiving(monitor);
+    udev_monitor_filter_add_match_subsystem_devtype(monitor.get(), "block", nullptr);
+    udev_monitor_enable_receiving(monitor.get());
 
     // After the monitor is enabled, so no stick plugged in meanwhile is missed.
     // A stick reported twice is mounted only once, see deviceAdded().
-    addPluggedDevices(udev_context);
+    addPluggedDevices(udev_context.get());
 
-    pollfd monitor_fd = {udev_monitor_get_fd(monitor), POLLIN, 0};
+    pollfd monitor_fd = {udev_monitor_get_fd(monitor.get()), POLLIN, 0};
     while (!stop_token.stop_requested())
     {
         if (poll(&monitor_fd, 1, POLL_TIMEOUT_MS) <= 0)
             continue; // timeout, check stop_token again
 
-        udev_device *device = udev_monitor_receive_device(monitor);
-        if (device == nullptr)
-            continue;
-
-        handleDevice(device);
-        udev_device_unref(device);
+        UdevDevice device(udev_monitor_receive_device(monitor.get()));
+        if (device)
+            handleDevice(device.get());
     }
-
-    udev_monitor_unref(monitor);
-    udev_unref(udev_context);
 }
 
 void UsbMonitor::deviceAdded(const std::string &device_node, const std::string &fs_type)
@@ -134,21 +140,19 @@ void UsbMonitor::deviceRemoved(const std::string &device_node)
  */
 void UsbMonitor::addPluggedDevices(udev *udev_context)
 {
-    udev_enumerate *enumerate = udev_enumerate_new(udev_context);
-    udev_enumerate_add_match_subsystem(enumerate, "block");
-    udev_enumerate_scan_devices(enumerate);
+    UdevEnumerate enumerate(udev_enumerate_new(udev_context));
+    if (!enumerate)
+        return;
+    udev_enumerate_add_match_subsystem(enumerate.get(), "block");
+    udev_enumerate_scan_devices(enumerate.get());
 
     udev_list_entry *entry = nullptr;
-    udev_list_entry_foreach(entry, udev_enumerate_get_list_entry(enumerate))
+    udev_list_entry_foreach(entry, udev_enumerate_get_list_entry(enumerate.get()))
     {
-        udev_device *device = udev_device_new_from_syspath(udev_context, udev_list_entry_get_name(entry));
-        if (device == nullptr)
-            continue;
-
-        handleDevice(device);
-        udev_device_unref(device);
+        UdevDevice device(udev_device_new_from_syspath(udev_context, udev_list_entry_get_name(entry)));
+        if (device)
+            handleDevice(device.get());
     }
-    udev_enumerate_unref(enumerate);
 }
 
 /**
