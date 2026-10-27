@@ -1,4 +1,5 @@
 # Builds and tests the daemon on Debian Trixie (GCC 14, the minimum compiler).
+# The tests run with coverage, on main the coverage badge goes to the branch "badges".
 name: CI
 
 on:
@@ -9,21 +10,41 @@ jobs:
   trixie:
     runs-on: ubuntu-latest
     container: debian:trixie
+    permissions:
+      contents: write # push the coverage badge
     env:
       DEBIAN_FRONTEND: noninteractive
     steps:
       - name: Install dependencies
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends g++ cmake make pkg-config libconfig++-dev libudev-dev libgtest-dev
+          apt-get install -y --no-install-recommends g++ cmake make pkg-config libconfig++-dev libudev-dev libgtest-dev gcovr git ca-certificates
 
       - uses: actions/checkout@v4
 
       - name: Configure
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DWARNINGS_AS_ERRORS=ON
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DWARNINGS_AS_ERRORS=ON -DCMAKE_CXX_FLAGS=--coverage
 
       - name: Build
         run: cmake --build build -j "$(nproc)"
 
       - name: Test
         run: ctest --test-dir build --output-on-failure
+
+      - name: Coverage
+        run: |
+          gcovr --root . --filter src/ --print-summary --json-summary coverage.json
+          percent=$(python3 -c "import json; print(round(json.load(open('coverage.json'))['line_percent']))")
+          .github/coverage-badge.sh "$percent" coverage.svg
+
+      # The branch "badges" only holds the badge, every run replaces it with one new commit
+      - name: Publish coverage badge
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir badges && cp coverage.svg badges/ && cd badges
+          git init -q -b badges
+          git add coverage.svg
+          git -c user.name="github-actions" -c user.email="github-actions@users.noreply.github.com" commit -q -m "Coverage badge"
+          git push -f "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" badges

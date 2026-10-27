@@ -1,6 +1,7 @@
 # garlic-daemon
 
 [![CI](https://github.com/sagiadinos/garlic-daemon/actions/workflows/ci.yml/badge.svg)](https://github.com/sagiadinos/garlic-daemon/actions/workflows/ci.yml)
+![Coverage](https://raw.githubusercontent.com/sagiadinos/garlic-daemon/badges/coverage.svg)
 
 Linux daemon for the [garlic-player](https://github.com/sagiadinos/garlic-player) digital signage player.
 
