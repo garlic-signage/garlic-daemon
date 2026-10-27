@@ -260,27 +260,24 @@ void Watchdog::reapEndedPlayer()
         return;
     }
 
+    bool has_status = (result == player_pid_); // false if waitpid() failed
+    kill(-player_pid_, SIGKILL);               // processes of a start script that are still left
+    player_pid_ = -1;
+
     // 127: the shell did not find the command, see "Missing player" in watchdog.hpp
-    if (result == player_pid_ && WIFEXITED(status) && WEXITSTATUS(status) == EXIT_COMMAND_NOT_FOUND)
+    if (has_status && WIFEXITED(status) && WEXITSTATUS(status) == EXIT_COMMAND_NOT_FOUND)
     {
         if (!player_missing_)
             logError("{} not found: {}, waiting for it.", player_name_, player_command_);
         player_missing_ = true;
-        kill(-player_pid_, SIGKILL);
-        player_pid_ = -1;
         return;
     }
 
     player_missing_ = false;
-    if (result == player_pid_)
-    {
-        if (WIFEXITED(status))
-            logWarning("{} exited with code {}", player_name_, WEXITSTATUS(status));
-        else if (WIFSIGNALED(status))
-            logWarning("{} was killed by signal {}", player_name_, WTERMSIG(status));
-    }
-    kill(-player_pid_, SIGKILL); // processes of a start script that are still left
-    player_pid_ = -1;
+    if (has_status && WIFEXITED(status))
+        logWarning("{} exited with code {}", player_name_, WEXITSTATUS(status));
+    else if (has_status && WIFSIGNALED(status))
+        logWarning("{} was killed by signal {}", player_name_, WTERMSIG(status));
     playerEnded();
 }
 
