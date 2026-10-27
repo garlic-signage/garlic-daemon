@@ -48,7 +48,8 @@ Test fixtures in `tests/` are exempt, their members have no trailing `_`.
 
 - No `using namespace` in header files.
 - `nullptr` instead of `NULL`.
-- Pass and return strings as `const std::string&` when no copy is needed.
+- Pass strings as `const std::string&` when no copy is needed. Return them by value,
+  that is simpler and safe (e.g. the getters of `Configuration`).
 - Every class gets a short doc comment (`/** ... */`) in its header explaining what it does.
 - Every source file starts with the AGPL license header.
 

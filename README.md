@@ -25,7 +25,8 @@ Do not start the player additionally via a desktop autostart, otherwise two play
 - Command: `/bin/sh -c <Player.command>`, so a start script with arguments is possible.
 - User: when the daemon runs as root, the player runs as `Player.user` with its groups,
   `HOME`, `USER`, `LOGNAME` and `PATH`. Otherwise it runs as the user of the daemon.
-- Environment: the entries of `Player.environment` are added, e.g. `DISPLAY=:0`.
+- Environment: as root the four variables above, otherwise the environment of the daemon.
+  The entries of `Player.environment`, e.g. `DISPLAY=:0`, are added and replace variables with the same name.
 - The player gets its own process group. Stopping it stops all processes of the group,
   so also the processes a start script has started.
 
@@ -125,6 +126,7 @@ e.g. only warnings and errors: `journalctl -u garlic-daemon -p warning`
 |---|---|
 | `Started garlic-player with pid …` | player started |
 | `User … does not exist, cannot start garlic-player` | `Player.user` is missing on the system, the player is not started |
+| `User … does not exist, only root may connect to the socket.` | same cause, logged once at the start of the daemon |
 | `garlic-player not found: …, waiting for it.` | `Player.command` does not exist (exit code 127), logged once |
 | `Found garlic-player, started with pid …` | the missing player exists now and runs |
 | `garlic-player exited with code …` / `was killed by signal …` | player has ended |
@@ -144,6 +146,7 @@ e.g. only warnings and errors: `journalctl -u garlic-daemon -p warning`
 | `Cannot read config file …` | the config file does not exist or is not readable, the daemon ends |
 | `Config file …:… - …` | syntax error in the config file (file, line, error), the daemon ends |
 | `Config value … has the wrong type` | e.g. `heartbeat_timeout = "60"` instead of `60`, the daemon ends |
+| other errors at the start | e.g. invalid `Player.environment` entry or socket cannot be created: the daemon ends with exit code 1 and logs the reason |
 
 ## Requirements
 
@@ -252,7 +255,7 @@ is described in [docs/player-api.md](docs/player-api.md).
 ## Source code
 
 - `src/`: all classes, `main.cpp` only wires them together
-- `tests/`: one GoogleTest file per class
+- `tests/`: one GoogleTest file per class, `smoke-test.sh` for the whole daemon, `data/` with invalid config files
 - `resource/`: config file and systemd unit template
 - `docs/`: further documentation, e.g. the player API
 - Rules for the code: see `CONVENTIONS.md`
