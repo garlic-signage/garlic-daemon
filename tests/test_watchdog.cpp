@@ -387,6 +387,24 @@ TEST_F(WatchdogTest, CrashLoopRebootsAndStoresTime)
     EXPECT_LE(std::abs(stored - now.count()), 5); // seconds
 }
 
+TEST_F(WatchdogTest, PlayerExitingByItselfCountsAsCrash)
+{
+    // Only 127 means "player missing", every other exit code is a crash, also 0
+    for (const char *code : {"0", "1"})
+    {
+        FakeSystemActions actions;
+        Watchdog watchdog(makeConfiguration(std::string("command = \"exit ") + code + "\"; reboot_after_crashes = 1;"),
+                          actions);
+        watchdog.check();
+        std::this_thread::sleep_for(100ms);
+        watchdog.check(); // notices the end
+
+        EXPECT_EQ(actions.reboot_calls, 1) << "exit " << code;
+        EXPECT_FALSE(watchdog.isPlayerRunning()) << "exit " << code; // backoff, no immediate restart
+        fs::remove(tmp_dir / "last_reboot");                         // otherwise the next reboot is blocked
+    }
+}
+
 TEST_F(WatchdogTest, NoRebootBeforeCrashLimit)
 {
     Watchdog watchdog(makeConfiguration("command = \"sleep 30\"; reboot_after_crashes = 2;"), system_actions);

@@ -29,3 +29,15 @@ foreach (CASE missing invalid-syntax invalid-environment invalid-type)
                      sh $<TARGET_FILE:garlic-daemon> ${CMAKE_CURRENT_SOURCE_DIR}/data/${CASE}.conf)
     set_tests_properties(Daemon.EndsWithConfig-${CASE} PROPERTIES TIMEOUT 10)
 endforeach ()
+
+# Command line: --help and --version end with 0, a wrong option with 2
+add_test(NAME Daemon.Help COMMAND garlic-daemon --help)
+set_tests_properties(Daemon.Help PROPERTIES PASS_REGULAR_EXPRESSION "Usage: garlic-daemon")
+add_test(NAME Daemon.Version COMMAND garlic-daemon --version)
+set_tests_properties(Daemon.Version PROPERTIES PASS_REGULAR_EXPRESSION "garlic-daemon [0-9]")
+add_test(NAME Daemon.WrongOptionEndsWithCode2
+         COMMAND sh -c "\"$1\" --no-such-option; test $? -eq 2" sh $<TARGET_FILE:garlic-daemon>)
+
+# The whole daemon with player, socket message and SIGTERM, see smoke-test.sh (needs python3)
+add_test(NAME Daemon.SmokeTest COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/smoke-test.sh $<TARGET_FILE:garlic-daemon>)
+set_tests_properties(Daemon.SmokeTest PROPERTIES TIMEOUT 20)

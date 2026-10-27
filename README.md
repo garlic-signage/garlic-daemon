@@ -150,7 +150,7 @@ e.g. only warnings and errors: `journalctl -u garlic-daemon -p warning`
 - GCC 14 or newer (C++23), CMake 3.20 or newer
 - libconfig++ (Debian: `libconfig++-dev`)
 - libudev (Debian: `libudev-dev`)
-- GoogleTest for the tests (Debian: `libgtest-dev`)
+- GoogleTest for the tests (Debian: `libgtest-dev`), python3 for the smoke test
 
 ## Build and test
 

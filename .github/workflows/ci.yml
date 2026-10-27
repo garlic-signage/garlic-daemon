@@ -20,7 +20,7 @@ jobs:
       - name: Install dependencies
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends g++ cmake make pkg-config libconfig++-dev libudev-dev libgtest-dev gcovr git ca-certificates
+          apt-get install -y --no-install-recommends g++ cmake make pkg-config libconfig++-dev libudev-dev libgtest-dev python3 gcovr git ca-certificates
 
       - uses: actions/checkout@v4
 
