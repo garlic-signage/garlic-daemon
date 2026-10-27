@@ -75,6 +75,8 @@ void UsbMonitor::run(std::stop_token stop_token)
     udev_monitor_filter_add_match_subsystem_devtype(monitor.get(), "block", nullptr);
     udev_monitor_enable_receiving(monitor.get());
 
+    removeOldMounts();
+
     // After the monitor is enabled, so no stick plugged in meanwhile is missed.
     // A stick reported twice is mounted only once, see deviceAdded().
     addPluggedDevices(udev_context.get());
@@ -133,6 +135,20 @@ void UsbMonitor::deviceRemoved(const std::string &device_node)
     std::filesystem::remove(entry->second, error); // only removes an empty directory
     logInfo("Unmounted USB device {} from {}", device_node, entry->second);
     mounted_.erase(entry);
+}
+
+void UsbMonitor::removeOldMounts()
+{
+    std::error_code error;
+    for (const std::filesystem::directory_entry &entry : std::filesystem::directory_iterator(mount_dir_, error))
+    {
+        if (!entry.is_directory(error) || entry.is_symlink(error))
+            continue;
+
+        system_actions_.unmount(entry.path().string());   // no error if it is no mount point
+        if (std::filesystem::remove(entry.path(), error)) // only removes an empty directory
+            logInfo("Removed old mount point {}", entry.path().string());
+    }
 }
 
 /**

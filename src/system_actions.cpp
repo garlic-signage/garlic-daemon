@@ -19,6 +19,7 @@
 #include "system_actions.hpp"
 
 #include <cerrno>
+#include <cstdlib>
 #include <system_error>
 #include <unistd.h>
 #include <sys/mount.h>
@@ -27,6 +28,10 @@
 
 void SystemActions::reboot()
 {
+    if (std::system("systemctl reboot") == 0)
+        return;
+
+    logError("systemctl reboot failed, reboot without clean shutdown.");
     sync();
     ::reboot(RB_AUTOBOOT);
 }
@@ -45,6 +50,6 @@ bool SystemActions::mount(const std::string &device, const std::string &mount_po
 
 void SystemActions::unmount(const std::string &mount_point)
 {
-    if (umount2(mount_point.c_str(), MNT_DETACH) != 0)
+    if (umount2(mount_point.c_str(), MNT_DETACH) != 0 && errno != EINVAL) // EINVAL: no mount point
         logError("Cannot unmount {}: {}", mount_point, std::system_category().message(errno));
 }

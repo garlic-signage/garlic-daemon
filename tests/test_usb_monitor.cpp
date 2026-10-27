@@ -134,6 +134,35 @@ TEST_F(UsbMonitorTest, RemovedDeviceIsUnmounted)
     EXPECT_FALSE(fs::exists(mount_dir / "sdb1"));
 }
 
+TEST_F(UsbMonitorTest, OldMountPointsAreUnmountedAndRemoved)
+{
+    // Left after a crash of the daemon, a file in mount_dir is not touched
+    fs::create_directories(mount_dir / "sdb1");
+    std::ofstream(mount_dir / "readme.txt") << "not a mount point";
+    UsbContentHandler handler(configuration, usb_actions);
+    UsbMonitor monitor(configuration, system_actions, handler);
+
+    monitor.removeOldMounts();
+
+    EXPECT_EQ(system_actions.unmount_calls, std::vector<std::string>{(mount_dir / "sdb1").string()});
+    EXPECT_FALSE(fs::exists(mount_dir / "sdb1"));
+    EXPECT_TRUE(fs::exists(mount_dir / "readme.txt"));
+}
+
+TEST_F(UsbMonitorTest, MissingMountDirIsNoError)
+{
+    libconfig::Config config;
+    config.readString("Usb = { mount_dir = \"" + (mount_dir / "does-not-exist").string() + "\"; };");
+    Configuration missing;
+    missing.readLibConfigValues(&config);
+    UsbContentHandler handler(missing, usb_actions);
+    UsbMonitor monitor(missing, system_actions, handler);
+
+    monitor.removeOldMounts();
+
+    EXPECT_TRUE(system_actions.unmount_calls.empty());
+}
+
 TEST_F(UsbMonitorTest, UnknownDeviceIsNotUnmounted)
 {
     UsbContentHandler handler(configuration, usb_actions);

@@ -18,14 +18,15 @@
 
 #include <gtest/gtest.h>
 #include <algorithm>
-#include <iterator>
-#include <sstream>
 #include <chrono>
 #include <csignal>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
+#include <sstream>
 #include <thread>
+#include <pwd.h>
 #include "watchdog.hpp"
 #include "fake_system_actions.hpp"
 #include "current_user.hpp"
@@ -174,6 +175,27 @@ TEST_F(WatchdogTest, PlayerInstalledLaterIsStarted)
     watchdog.check(); // the player runs
 
     EXPECT_TRUE(watchdog.isPlayerRunning());
+}
+
+TEST_F(WatchdogTest, MissingHomeDirectoryStartsPlayerInRoot)
+{
+    // Only as root the watchdog switches to Player.user. On Debian "nobody" has the home /nonexistent.
+    passwd *pw = getpwnam("nobody");
+    if (getuid() != 0 || pw == nullptr || fs::exists(pw->pw_dir))
+        GTEST_SKIP() << "needs root and the user nobody without home directory";
+
+    fs::permissions(tmp_dir, fs::perms::all); // nobody writes the result
+    fs::path out_file = tmp_dir / "pwd.txt";
+    libconfig::Config config;
+    config.readString("state_dir = \"" + tmp_dir.string() + "\"; Player = { user = \"nobody\"; command = \"pwd > " +
+                      out_file.string() + "\"; };");
+    Configuration configuration;
+    configuration.readLibConfigValues(&config);
+    Watchdog watchdog(configuration, system_actions);
+
+    watchdog.check();
+
+    EXPECT_EQ(readFileWithTimeout(out_file), "/");
 }
 
 TEST_F(WatchdogTest, CheckDoesNotStartSecondPlayer)

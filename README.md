@@ -84,6 +84,9 @@ a reboot loop. Therefore:
   in the future. Then there is no reboot either.
 - `reboot_after_crashes = 0` disables the reboot.
 
+The reboot runs with `systemctl reboot`, so all services stop cleanly, also the daemon and the player.
+Only if that fails, the daemon writes the buffers to disk and reboots at once.
+
 The systemd unit creates `/var/lib/garlic-daemon` with `StateDirectory=`.
 
 ## USB sticks
@@ -98,6 +101,7 @@ The daemon mounts USB sticks itself, so the player can read them.
 - Sticks that are already plugged in when the daemon starts are mounted too.
 - When the stick is removed, it is unmounted and the mount point is deleted.
   When the daemon stops, all sticks are unmounted.
+- At its start the daemon unmounts and deletes mount points left in `Usb.mount_dir`, e.g. after a crash.
 
 ### Content of the stick
 
@@ -135,10 +139,12 @@ e.g. only warnings and errors: `journalctl -u garlic-daemon -p warning`
 | `garlic-player crashed … times in a row, reboot the system.` | reboot |
 | `No reboot, the watchdog already rebooted within the last 6 hours.` | reboot skipped |
 | `No reboot, cannot write …` | reboot skipped, check `state_dir` |
+| `systemctl reboot failed, reboot without clean shutdown.` | e.g. no systemd, the daemon reboots at once |
 | `garlic-player does not stop, send SIGKILL.` | player ignored SIGTERM |
 | `Mounted USB device … to …` / `Unmounted USB device …` | USB stick plugged in / removed |
 | `USB device … has unsupported filesystem …` | stick not mounted, e.g. encrypted or swap |
 | `Cannot mount … to …` | mount failed, e.g. damaged filesystem |
+| `Removed old mount point …` | mount point left from an earlier run, e.g. after a crash of the daemon |
 | `Not implemented yet: …` | stub of a USB action, see above |
 | `Client connected.` / `Client disconnected.` | player (or another client) connected to the socket |
 | `Rejected connection from uid …` | a user other than `Player.user` or root tried to connect |

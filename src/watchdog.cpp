@@ -191,7 +191,7 @@ void Watchdog::start()
             if (setgroups(groups.size(), groups.data()) != 0 || setgid(gid) != 0 || setuid(uid) != 0)
                 _exit(126);
         }
-        if (chdir(home.c_str()) != 0)
+        if (chdir(home.c_str()) != 0 && chdir("/") != 0) // e.g. a user without home directory
             _exit(126);
 
         execve(argv[0], const_cast<char *const *>(argv), envp.data());

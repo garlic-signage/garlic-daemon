@@ -38,7 +38,8 @@ struct udev_device;
  * /media/garlic/sda1, and then passed to the UsbContentHandler.
  * Sticks that are already plugged in when run() starts are handled too.
  *
- * handleDevice(), deviceAdded() and deviceRemoved() contain the logic without udev, so tests can call them.
+ * handleDevice(), deviceAdded(), deviceRemoved() and removeOldMounts() contain the logic
+ * without udev, so tests can call them.
  * The class is not thread safe, all methods are called from the USB thread of the Daemon.
  */
 class UsbMonitor
@@ -71,6 +72,10 @@ class UsbMonitor
 
         /// Unmounts the device if it was mounted by this class.
         void deviceRemoved(const std::string &device_node);
+
+        /// Unmounts and removes the mount points left in mount_dir, e.g. after a crash of the daemon.
+        /// Otherwise a stick plugged in again would be mounted a second time on the same mount point.
+        void removeOldMounts();
 
     private:
         static constexpr int POLL_TIMEOUT_MS = 200; // how often run() checks whether it should stop

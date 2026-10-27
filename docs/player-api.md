@@ -45,7 +45,7 @@ The player should try again every few seconds. Messages sent while there is no c
 | Message | Action |
 |---|---|
 | `heartbeat` | the player is alive, resets the hang detection (see below) |
-| `reboot` | the daemon syncs the disks and reboots the system |
+| `reboot` | the daemon reboots the system with `systemctl reboot`, so the player gets `SIGTERM` first |
 | `install_app` | not implemented yet |
 | `remove_app` | not implemented yet |
 
@@ -79,7 +79,7 @@ The daemon normally runs as root (systemd unit). Then:
 - **User**: the player runs as `Player.user` with its groups.
 - **Environment**: `HOME`, `USER`, `LOGNAME`, `PATH=/usr/local/bin:/usr/bin:/bin`
   and the entries of `Player.environment`, e.g. `DISPLAY=:0`.
-- **Working directory**: the home directory of `Player.user`.
+- **Working directory**: the home directory of `Player.user`, `/` if it does not exist.
 
 When the daemon runs as normal user (e.g. during development), the player runs as the same user,
 gets the environment of the daemon plus `Player.environment`, and the working directory `/`.

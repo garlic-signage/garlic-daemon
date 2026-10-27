@@ -32,13 +32,15 @@ class SystemActions
     public:
         virtual ~SystemActions() = default;
 
-        /// Writes all buffers to disk and reboots the machine.
+        /// Reboots with "systemctl reboot", so all services (also the daemon and the player) stop cleanly.
+        /// Only if that fails: writes all buffers to disk and reboots at once.
         virtual void reboot();
 
         /// Mounts device read-only to mount_point (nosuid, nodev, noexec). Returns false on error.
         virtual bool mount(const std::string &device, const std::string &mount_point, const std::string &fs_type);
 
         /// Unmounts mount_point, also when the device is already removed (lazy unmount).
+        /// A directory that is no mount point is no error.
         virtual void unmount(const std::string &mount_point);
 };
 
