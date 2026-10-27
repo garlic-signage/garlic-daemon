@@ -33,6 +33,7 @@ class Configuration
 {
     public:
         Configuration();
+        /// Throws std::runtime_error for an invalid value, e.g. a Player.environment entry without "=".
         void readLibConfigValues(const libconfig::Config *config);
 
         /// Overrides values with the given command line options.

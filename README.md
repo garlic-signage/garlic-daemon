@@ -198,7 +198,7 @@ An invalid file ends the daemon with an error message.
 | `Player.name` | `"garlic-player"` | name in log messages |
 | `Player.command` | `"/opt/garlic-player/garlic.sh"` | start command, run with `/bin/sh -c` |
 | `Player.user` | `"digitalsignage"` | user the player runs as |
-| `Player.environment` | `[]` | extra environment variables, e.g. `["DISPLAY=:0"]` |
+| `Player.environment` | `[]` | extra environment variables as `"KEY=VALUE"`, e.g. `["DISPLAY=:0"]`, they replace variables with the same name. An entry without `=` ends the daemon with an error |
 | `Player.heartbeat_timeout` | `0` | seconds without heartbeat until restart, `0` = off |
 | `Player.reboot_after_crashes` | `7` | crashes in a row until reboot, `0` = never |
 

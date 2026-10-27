@@ -76,7 +76,14 @@ void Configuration::readLibConfigValues(const libconfig::Config *config)
         {
             const libconfig::Setting &environment = player["environment"];
             for (int i = 0; i < environment.getLength(); i++)
-                player_environment_.emplace_back(environment[i].c_str());
+            {
+                // Without a name before "=" the watchdog could not replace a variable of the same name
+                std::string entry = environment[i].c_str();
+                if (entry.find('=') == std::string::npos || entry.starts_with('='))
+                    throw std::runtime_error("Player.environment needs entries like \"KEY=VALUE\", not '" + entry +
+                                             "'");
+                player_environment_.push_back(entry);
+            }
         }
     }
     catch (const libconfig::ParseException &e)

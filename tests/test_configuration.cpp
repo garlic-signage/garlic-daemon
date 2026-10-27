@@ -138,6 +138,24 @@ CmdParser parseCommandLine(std::vector<std::string> arguments)
 }
 } // namespace
 
+TEST(Configuration, EnvironmentEntryWithoutNameOrValueThrows)
+{
+    // A typo like "DISPLAY" instead of "DISPLAY=:0" would otherwise remove the whole environment of the player
+    for (const char *entry : {"DISPLAY", "=:0", ""})
+    {
+        EXPECT_THROW(readConfiguration(std::string("Player = { environment = [\"") + entry + "\"]; };"),
+                     std::runtime_error)
+            << entry;
+    }
+}
+
+TEST(Configuration, EnvironmentEntryWithEmptyValueIsAllowed)
+{
+    Configuration configuration = readConfiguration("Player = { environment = [\"NO_PROXY=\"]; };");
+
+    EXPECT_EQ(configuration.getPlayerEnvironment(), (std::vector<std::string>{"NO_PROXY="}));
+}
+
 TEST(Configuration, CommandLineOverridesConfigFile)
 {
     Configuration configuration = readConfiguration("socket = \"/from/file.sock\";"

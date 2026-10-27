@@ -271,6 +271,18 @@ TEST_F(WatchdogTest, EnvironmentFromConfigurationIsPassed)
     EXPECT_EQ(readFileWithTimeout(out_file), "hello");
 }
 
+TEST_F(WatchdogTest, EnvironmentFromConfigurationReplacesVariableWithSameName)
+{
+    // HOME exists as root (set by the watchdog) and as normal user (inherited from the tests)
+    fs::path out_file = tmp_dir / "env.txt";
+    Watchdog watchdog(makeConfiguration("command = \"env | grep ^HOME= | tr '\\\\n' , > " + out_file.string() +
+                                        "\"; environment = [\"HOME=/tmp/garlic-home\"];"),
+                      system_actions);
+    watchdog.check();
+
+    EXPECT_EQ(readFileWithTimeout(out_file), "HOME=/tmp/garlic-home,"); // only once, the old HOME is gone
+}
+
 TEST_F(WatchdogTest, CrashLoopRebootsAndStoresTime)
 {
     Watchdog watchdog(makeConfiguration("command = \"sleep 30\"; reboot_after_crashes = 1;"), system_actions);
