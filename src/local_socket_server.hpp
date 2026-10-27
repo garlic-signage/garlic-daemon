@@ -39,10 +39,8 @@
  * the user of a client (SO_PEERCRED), so the file permissions of the socket do
  * not matter: everybody may connect, but other users are disconnected at once.
  *
- * Received lines can be fetched in two ways:
- *  1. pollingQueue(): returns at once, false when there is no message.
- *  2. waitForMessage(): blocks until a message arrives, false when the server was stopped.
- *     Call it only after start().
+ * waitForMessage() returns the received lines one by one. It blocks until a line arrives
+ * and returns false when the server was stopped. Call it only after start().
  *
  * send() writes a line to all connected clients, e.g. to tell the player something.
  * All methods are thread safe. The destructor stops the thread and removes the socket file,
@@ -61,7 +59,6 @@ class LocalSocketServer
         /// Requests the stop and wakes up waitForMessage(). Calling it more than once is harmless.
         void stop();
 
-        bool pollingQueue(std::string &message);
         bool waitForMessage(std::string &message);
 
         /// Sends message + '\n' to all connected clients.

@@ -73,17 +73,6 @@ void LocalSocketServer::stop()
     server_thread_.request_stop();
 }
 
-bool LocalSocketServer::pollingQueue(std::string &message)
-{
-    std::unique_lock<std::mutex> lock(mtx_);
-    if (queue_.empty())
-        return false;
-
-    message = queue_.front();
-    queue_.pop();
-    return true;
-}
-
 bool LocalSocketServer::waitForMessage(std::string &message)
 {
     std::unique_lock<std::mutex> lock(mtx_);

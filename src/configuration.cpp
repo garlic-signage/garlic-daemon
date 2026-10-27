@@ -40,7 +40,6 @@ void Configuration::readLibConfigValues(const libconfig::Config *config)
 {
     logInfo("Start read values from config file");
 
-    readValue(config, "app_name", app_name_);
     readValue(config, "socket", socket_path_);
     readValue(config, "state_dir", state_dir_);
 
@@ -96,11 +95,6 @@ void Configuration::applyCommandLine(const CmdParser &cmd_parser)
             throw std::runtime_error("--heartbeat-timeout needs a number of seconds, not '" + text + "'");
         heartbeat_timeout_ = seconds;
     }
-}
-
-std::string Configuration::getAppName() const
-{
-    return app_name_;
 }
 
 std::string Configuration::getSocketPath() const

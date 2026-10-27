@@ -40,7 +40,6 @@ class Configuration
         /// Throws std::runtime_error for an invalid value.
         void applyCommandLine(const CmdParser &cmd_parser);
 
-        [[nodiscard]] std::string getAppName() const;
         [[nodiscard]] std::string getSocketPath() const;
         [[nodiscard]] std::string getStateDir() const;
         [[nodiscard]] std::string getPlayerName() const;
@@ -53,7 +52,6 @@ class Configuration
         [[nodiscard]] std::string getUsbFirmwareFile() const;
 
     private:
-        const std::string APP_NAME          = "garlic-daemon";
         const std::string SOCKET_PATH       = "/run/garlic-daemon/garlic-daemon.sock";
         const std::string STATE_DIR         = "/var/lib/garlic-daemon";
         const std::string PLAYER_NAME       = "garlic-player";
@@ -64,7 +62,6 @@ class Configuration
         const std::string USB_MOUNT_DIR     = "/media/garlic";
         const std::string USB_FIRMWARE_FILE = "garlic-player.AppImage";
 
-        std::string app_name_       = APP_NAME;
         std::string socket_path_    = SOCKET_PATH;
         std::string state_dir_      = STATE_DIR;
         std::string player_name_    = PLAYER_NAME;

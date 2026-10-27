@@ -78,19 +78,6 @@ class LocalSocketServerTest : public ::testing::Test
             ssize_t bytes_read = recv(fd, buffer, sizeof(buffer), 0);
             return bytes_read > 0 ? std::string(buffer, bytes_read) : "";
         }
-
-        // Polls until a message arrives, but at most 2 seconds, so a broken test fails instead of hanging
-        static bool pollWithTimeout(LocalSocketServer &server, std::string &message)
-        {
-            auto deadline = std::chrono::steady_clock::now() + 2s;
-            while (std::chrono::steady_clock::now() < deadline)
-            {
-                if (server.pollingQueue(message))
-                    return true;
-                std::this_thread::sleep_for(5ms);
-            }
-            return false;
-        }
 };
 
 TEST_F(LocalSocketServerTest, ThrowsWhenSocketCannotBeCreated)
@@ -125,14 +112,6 @@ TEST_F(LocalSocketServerTest, OldSocketFileIsReplaced)
     LocalSocketServer server(socket_path, getuid());
 
     EXPECT_TRUE(fs::is_socket(socket_path));
-}
-
-TEST_F(LocalSocketServerTest, PollingEmptyQueueReturnsFalse)
-{
-    LocalSocketServer server(socket_path, getuid());
-    std::string message;
-
-    EXPECT_FALSE(server.pollingQueue(message));
 }
 
 TEST_F(LocalSocketServerTest, ReceivesLine)
@@ -174,7 +153,7 @@ TEST_F(LocalSocketServerTest, LineSplitOverSeveralWrites)
     write(fd, "oot\n");
 
     std::string message;
-    EXPECT_TRUE(pollWithTimeout(server, message));
+    EXPECT_TRUE(server.waitForMessage(message));
     EXPECT_EQ(message, "reboot");
 }
 
@@ -183,13 +162,13 @@ TEST_F(LocalSocketServerTest, CarriageReturnAndEmptyLinesAreIgnored)
     LocalSocketServer server(socket_path, getuid());
     server.start();
 
-    write(connectClient(), "\n\r\nreboot\r\n");
+    write(connectClient(), "\n\r\nreboot\r\nnext\n");
 
     std::string message;
     EXPECT_TRUE(server.waitForMessage(message));
     EXPECT_EQ(message, "reboot");
-    std::this_thread::sleep_for(50ms);
-    EXPECT_FALSE(server.pollingQueue(message));
+    EXPECT_TRUE(server.waitForMessage(message));
+    EXPECT_EQ(message, "next"); // no empty message between them
 }
 
 TEST_F(LocalSocketServerTest, LineWithoutNewlineIsNotReceived)
@@ -198,10 +177,12 @@ TEST_F(LocalSocketServerTest, LineWithoutNewlineIsNotReceived)
     server.start();
 
     write(connectClient(), "reboot");
+    std::this_thread::sleep_for(300ms);
+    write(connectClient(), "next\n"); // a second client, otherwise "reboot" would be completed
 
     std::string message;
-    std::this_thread::sleep_for(300ms);
-    EXPECT_FALSE(server.pollingQueue(message));
+    EXPECT_TRUE(server.waitForMessage(message));
+    EXPECT_EQ(message, "next");
 }
 
 TEST_F(LocalSocketServerTest, TooLongLineClosesConnection)
@@ -228,9 +209,8 @@ TEST_F(LocalSocketServerTest, OtherUserIsRejected)
 
     write(fd, "reboot\n");
 
-    EXPECT_EQ(read(fd), ""); // the server closed the connection
-    std::string message;
-    EXPECT_FALSE(server.pollingQueue(message));
+    // The server closes the connection right after accept(), before it reads anything
+    EXPECT_EQ(read(fd), "");
 }
 
 TEST_F(LocalSocketServerTest, SendReachesAllClients)

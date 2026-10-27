@@ -196,7 +196,6 @@ An invalid file ends the daemon with an error message.
 
 | Value | Default | Meaning |
 |---|---|---|
-| `app_name` | `"garlic-daemon"` | name of the application |
 | `socket` | `"/run/garlic-daemon/garlic-daemon.sock"` | Unix socket for the player, see [docs/player-api.md](docs/player-api.md) |
 | `state_dir` | `"/var/lib/garlic-daemon"` | directory for files that must survive a reboot |
 | `Usb.mount_dir` | `"/media/garlic"` | USB sticks are mounted to `<mount_dir>/<device>` |
