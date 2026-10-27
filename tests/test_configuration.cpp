@@ -125,3 +125,65 @@ TEST(Configuration, ShippedConfigFileIsValid)
     EXPECT_EQ(configuration.getUsbMountDir(), "/media/garlic");
     EXPECT_EQ(configuration.getUsbFirmwareFile(), "garlic-player.AppImage");
 }
+
+namespace
+{
+CmdParser parseCommandLine(std::vector<std::string> arguments)
+{
+    arguments.insert(arguments.begin(), "garlic-daemon");
+    std::vector<char *> argv;
+    for (std::string &argument : arguments)
+        argv.push_back(argument.data());
+    return CmdParser(static_cast<int>(argv.size()), argv.data());
+}
+} // namespace
+
+TEST(Configuration, CommandLineOverridesConfigFile)
+{
+    Configuration configuration = readConfiguration("socket = \"/from/file.sock\";"
+                                                    "state_dir = \"/from/file\";"
+                                                    "Usb = { mount_dir = \"/from/file/usb\"; };"
+                                                    "Player = { command = \"from-file\"; heartbeat_timeout = 60; "
+                                                    "user = \"file-user\"; };");
+
+    configuration.applyCommandLine(
+        parseCommandLine({"--socket", "/tmp/garlic.sock", "--player-command", "sleep 1000", "--heartbeat-timeout", "5",
+                          "--state-dir", "/tmp/state", "--usb-mount-dir", "/tmp/usb"}));
+
+    EXPECT_EQ(configuration.getSocketPath(), "/tmp/garlic.sock");
+    EXPECT_EQ(configuration.getPlayerCommand(), "sleep 1000");
+    EXPECT_EQ(configuration.getHeartbeatTimeout(), 5);
+    EXPECT_EQ(configuration.getStateDir(), "/tmp/state");
+    EXPECT_EQ(configuration.getUsbMountDir(), "/tmp/usb");
+    EXPECT_EQ(configuration.getPlayerUser(), "file-user"); // no option for it, the file value stays
+}
+
+TEST(Configuration, CommandLineWithoutOptionsKeepsValues)
+{
+    Configuration configuration = readConfiguration("Player = { command = \"from-file\"; };");
+
+    configuration.applyCommandLine(parseCommandLine({"--config", "/etc/garlic-daemon/garlic-daemon.conf"}));
+
+    EXPECT_EQ(configuration.getPlayerCommand(), "from-file");
+    EXPECT_EQ(configuration.getSocketPath(), "/run/garlic-daemon/garlic-daemon.sock");
+}
+
+TEST(Configuration, HeartbeatTimeoutZeroIsAllowed)
+{
+    Configuration configuration;
+
+    configuration.applyCommandLine(parseCommandLine({"--heartbeat-timeout", "0"}));
+
+    EXPECT_EQ(configuration.getHeartbeatTimeout(), 0);
+}
+
+TEST(Configuration, InvalidHeartbeatTimeoutThrows)
+{
+    for (const char *value : {"abc", "-5", "10s", ""})
+    {
+        Configuration configuration;
+        EXPECT_THROW(configuration.applyCommandLine(parseCommandLine({"--heartbeat-timeout", value})),
+                     std::runtime_error)
+            << value;
+    }
+}

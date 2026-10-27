@@ -193,6 +193,37 @@ Signals: `systemctl stop garlic-daemon` sends SIGTERM, the daemon stops the play
 `systemctl reload garlic-daemon` sends SIGHUP, which is only logged so far.
 To apply a changed config, restart the daemon: `systemctl restart garlic-daemon`.
 
+## Command line options
+
+```
+garlic-daemon [options]
+```
+
+| Option | Meaning |
+|---|---|
+| `--config <file>` | read the configuration from file |
+| `--socket <path>` | Unix socket for the player (config: `socket`) |
+| `--player-command <command>` | command that starts the player (config: `Player.command`) |
+| `--heartbeat-timeout <seconds>` | restart the player without heartbeat, `0` = off (config: `Player.heartbeat_timeout`) |
+| `--state-dir <dir>` | directory for files that survive a reboot (config: `state_dir`) |
+| `--usb-mount-dir <dir>` | USB sticks are mounted below this directory (config: `Usb.mount_dir`) |
+| `--help` | show the options and exit |
+| `--version` | show the version and exit |
+
+- Order of the values: default, then config file, then command line option.
+- An unknown option, an argument without option or a missing value ends the daemon with exit code 2,
+  so a typo is not silently ignored.
+
+**Test run as normal user**, without config file and without root:
+
+```sh
+garlic-daemon --socket /tmp/garlic.sock --player-command "sleep 1000" \
+              --state-dir /tmp --usb-mount-dir /tmp/usb
+echo heartbeat | socat - UNIX-CONNECT:/tmp/garlic.sock
+```
+
+As normal user the daemon cannot mount USB sticks or reboot, it logs an error instead.
+
 ## Player API
 
 The player talks to the daemon over the Unix socket `/run/garlic-daemon/garlic-daemon.sock`,

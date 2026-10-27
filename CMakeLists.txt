@@ -1,6 +1,6 @@
 # 3.20 is the first version that knows CMAKE_CXX_STANDARD 23
 cmake_minimum_required(VERSION 3.20)
-project(garlic-daemon LANGUAGES CXX)
+project(garlic-daemon VERSION 0.1.0 LANGUAGES CXX)
 set(THIS garlic-daemon)
 
 # C++23 without GNU extensions, minimum compiler is GCC 14, see CONVENTIONS.md
@@ -57,6 +57,7 @@ target_link_libraries(garlic-core PUBLIC libconfig++.so PkgConfig::UDEV)
 # The daemon itself only consists of main.cpp
 add_executable(${THIS} src/main.cpp)
 target_link_libraries(${THIS} PRIVATE garlic-core)
+target_compile_definitions(${THIS} PRIVATE GARLIC_DAEMON_VERSION="${PROJECT_VERSION}")
 
 # Unit tests (disable with -DBUILD_TESTS=OFF)
 option(BUILD_TESTS "Build the unit tests" ON)

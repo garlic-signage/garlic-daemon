@@ -50,15 +50,38 @@ static uid_t playerUid(const Configuration &configuration)
 int main(int argc, char **argv)
 {
     CmdParser cmd_parser(argc, argv);
+    if (!cmd_parser.getError().empty())
+    {
+        std::cerr << "Error: " << cmd_parser.getError() << "\n\n" << CmdParser::helpText();
+        return 2; // usual exit code for a wrong command line
+    }
+
+    if (cmd_parser.has("--help"))
+    {
+        std::cout << CmdParser::helpText();
+        return 0;
+    }
+
+    if (cmd_parser.has("--version"))
+    {
+        std::cout << "garlic-daemon " << GARLIC_DAEMON_VERSION << std::endl;
+        return 0;
+    }
+
     try
     {
+        LOG_INFO("garlic-daemon ", GARLIC_DAEMON_VERSION, " starts.");
+
+        // Order: defaults, then config file, then command line options
         Configuration configuration;
-        if (cmd_parser.checkForConfigOption())
+        if (cmd_parser.has("--config"))
         {
+            LOG_INFO("Config file: ", cmd_parser.value("--config"));
             libconfig::Config config;
-            config.readFile(cmd_parser.getConfigFilePath().c_str());
+            config.readFile(cmd_parser.value("--config").c_str());
             configuration.readLibConfigValues(&config);
         }
+        configuration.applyCommandLine(cmd_parser);
 
         // Must happen before any thread is started, so all threads inherit the blocked signals
         Daemon::blockSignals();
@@ -80,7 +103,7 @@ int main(int argc, char **argv)
     }
     catch (const libconfig::FileIOException &)
     {
-        std::cerr << "Error: cannot read config file " << cmd_parser.getConfigFilePath() << std::endl;
+        std::cerr << "Error: cannot read config file " << cmd_parser.value("--config") << std::endl;
         return 1;
     }
     catch (const libconfig::ParseException &e)

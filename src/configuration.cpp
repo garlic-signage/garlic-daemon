@@ -18,6 +18,9 @@
 
 #include "configuration.hpp"
 
+#include <charconv>
+#include <stdexcept>
+
 Configuration::Configuration() = default;
 
 void Configuration::readLibConfigValues(const libconfig::Config *config)
@@ -78,6 +81,32 @@ void Configuration::readLibConfigValues(const libconfig::Config *config)
     catch (const libconfig::ParseException &e)
     {
         std::cerr << "Parse error at " << e.getFile() << ":" << e.getLine() << " - " << e.getError() << std::endl;
+    }
+}
+
+void Configuration::applyCommandLine(const CmdParser &cmd_parser)
+{
+    if (cmd_parser.has("--socket"))
+        socket_path_ = cmd_parser.value("--socket");
+
+    if (cmd_parser.has("--player-command"))
+        player_command_ = cmd_parser.value("--player-command");
+
+    if (cmd_parser.has("--state-dir"))
+        state_dir_ = cmd_parser.value("--state-dir");
+
+    if (cmd_parser.has("--usb-mount-dir"))
+        usb_mount_dir_ = cmd_parser.value("--usb-mount-dir");
+
+    if (cmd_parser.has("--heartbeat-timeout"))
+    {
+        // Only a whole, not negative number, e.g. "10s" or "-1" are errors
+        std::string text  = cmd_parser.value("--heartbeat-timeout");
+        int seconds       = 0;
+        auto [end, error] = std::from_chars(text.data(), text.data() + text.size(), seconds);
+        if (error != std::errc() || end != text.data() + text.size() || seconds < 0)
+            throw std::runtime_error("--heartbeat-timeout needs a number of seconds, not '" + text + "'");
+        heartbeat_timeout_ = seconds;
     }
 }
 

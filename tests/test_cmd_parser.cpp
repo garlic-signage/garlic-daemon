@@ -17,51 +17,108 @@
 *************************************************************************************/
 
 #include <gtest/gtest.h>
+#include <vector>
 #include "cmd_parser.hpp"
 
-// CmdParser expects argv like main() gets it: argv[0] is the program name.
-
-TEST(CmdParser, NoArgumentsHasNoConfigOption)
+namespace
 {
-    char *argv[] = {(char *)"garlic-daemon"};
-    CmdParser parser(1, argv);
+// Builds argc/argv like main() gets them: argv[0] is the program name
+CmdParser parse(std::vector<std::string> arguments)
+{
+    arguments.insert(arguments.begin(), "garlic-daemon");
+    std::vector<char *> argv;
+    for (std::string &argument : arguments)
+        argv.push_back(argument.data());
+    return CmdParser(static_cast<int>(argv.size()), argv.data());
+}
+} // namespace
 
-    EXPECT_FALSE(parser.checkForConfigOption());
-    EXPECT_EQ(parser.getConfigFilePath(), "");
+TEST(CmdParser, NoArguments)
+{
+    CmdParser parser = parse({});
+
+    EXPECT_EQ(parser.getError(), "");
+    EXPECT_FALSE(parser.has("--config"));
+    EXPECT_EQ(parser.value("--config"), "");
 }
 
-TEST(CmdParser, ConfigOptionWithValue)
+TEST(CmdParser, OptionWithValue)
 {
-    char *argv[] = {(char *)"garlic-daemon", (char *)"--config", (char *)"/etc/garlic-daemon/garlic-daemon.conf"};
-    CmdParser parser(3, argv);
+    CmdParser parser = parse({"--config", "/etc/garlic-daemon/garlic-daemon.conf"});
 
-    EXPECT_TRUE(parser.checkForConfigOption());
-    EXPECT_EQ(parser.getConfigFilePath(), "/etc/garlic-daemon/garlic-daemon.conf");
+    EXPECT_EQ(parser.getError(), "");
+    EXPECT_TRUE(parser.has("--config"));
+    EXPECT_EQ(parser.value("--config"), "/etc/garlic-daemon/garlic-daemon.conf");
 }
 
-TEST(CmdParser, ConfigOptionBetweenOtherArguments)
+TEST(CmdParser, SeveralOptions)
 {
-    char *argv[] = {(char *)"garlic-daemon", (char *)"--foo", (char *)"--config", (char *)"my.conf", (char *)"--bar"};
-    CmdParser parser(5, argv);
+    CmdParser parser = parse({"--socket", "/tmp/garlic.sock", "--player-command", "sleep 1000", "--heartbeat-timeout",
+                              "60", "--state-dir", "/tmp/state", "--usb-mount-dir", "/tmp/usb"});
 
-    EXPECT_TRUE(parser.checkForConfigOption());
-    EXPECT_EQ(parser.getConfigFilePath(), "my.conf");
+    EXPECT_EQ(parser.getError(), "");
+    EXPECT_EQ(parser.value("--socket"), "/tmp/garlic.sock");
+    EXPECT_EQ(parser.value("--player-command"), "sleep 1000"); // one token, the shell passes it quoted
+    EXPECT_EQ(parser.value("--heartbeat-timeout"), "60");
+    EXPECT_EQ(parser.value("--state-dir"), "/tmp/state");
+    EXPECT_EQ(parser.value("--usb-mount-dir"), "/tmp/usb");
 }
 
-TEST(CmdParser, ConfigOptionWithoutValueGivesEmptyPath)
+TEST(CmdParser, OptionsWithoutValue)
 {
-    char *argv[] = {(char *)"garlic-daemon", (char *)"--config"};
+    CmdParser parser = parse({"--help", "--version"});
+
+    EXPECT_EQ(parser.getError(), "");
+    EXPECT_TRUE(parser.has("--help"));
+    EXPECT_TRUE(parser.has("--version"));
+    EXPECT_FALSE(parser.has("--config"));
+}
+
+TEST(CmdParser, LastValueWins)
+{
+    CmdParser parser = parse({"--socket", "/tmp/first.sock", "--socket", "/tmp/second.sock"});
+
+    EXPECT_EQ(parser.value("--socket"), "/tmp/second.sock");
+}
+
+TEST(CmdParser, MissingValueIsError)
+{
+    CmdParser parser = parse({"--config"});
+
+    EXPECT_EQ(parser.getError(), "option --config needs a value <file>");
+}
+
+TEST(CmdParser, UnknownOptionIsError)
+{
+    CmdParser parser = parse({"--player-comand", "sleep 1000"}); // typo
+
+    EXPECT_EQ(parser.getError(), "unknown option --player-comand");
+}
+
+TEST(CmdParser, ArgumentWithoutOptionIsError)
+{
+    CmdParser parser = parse({"/etc/garlic-daemon/garlic-daemon.conf"});
+
+    EXPECT_EQ(parser.getError(), "unknown option /etc/garlic-daemon/garlic-daemon.conf");
+}
+
+TEST(CmdParser, ProgramNameIsNotParsed)
+{
+    char *argv[] = {(char *)"--config", (char *)"--help"};
     CmdParser parser(2, argv);
 
-    EXPECT_TRUE(parser.checkForConfigOption());
-    EXPECT_EQ(parser.getConfigFilePath(), "");
+    // argv[0] is skipped, so only --help is parsed
+    EXPECT_EQ(parser.getError(), "");
+    EXPECT_FALSE(parser.has("--config"));
+    EXPECT_TRUE(parser.has("--help"));
 }
 
-TEST(CmdParser, ProgramNameIsNotParsedAsOption)
+TEST(CmdParser, HelpTextListsAllOptions)
 {
-    char *argv[] = {(char *)"--config", (char *)"other"};
-    CmdParser parser(2, argv);
+    std::string help = CmdParser::helpText();
 
-    // argv[0] is skipped, so only "other" is a token
-    EXPECT_FALSE(parser.checkForConfigOption());
+    for (const char *option :
+         {"--config <file>", "--socket <path>", "--player-command <command>", "--heartbeat-timeout <seconds>",
+          "--state-dir <dir>", "--usb-mount-dir <dir>", "--help", "--version"})
+        EXPECT_NE(help.find(option), std::string::npos) << option;
 }

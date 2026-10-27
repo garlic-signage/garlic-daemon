@@ -23,16 +23,22 @@
 #include <string>
 #include <vector>
 #include <libconfig.h++>
+#include "cmd_parser.hpp"
 
 /**
  * Holds the settings of the daemon. Every value has a default,
- * which is replaced by the value from the config file if it exists there.
+ * which is replaced by the value from the config file if it exists there,
+ * which is replaced by the command line option if it is given.
  */
 class Configuration
 {
     public:
         Configuration();
         void readLibConfigValues(const libconfig::Config *config);
+
+        /// Overrides values with the given command line options.
+        /// Throws std::runtime_error for an invalid value.
+        void applyCommandLine(const CmdParser &cmd_parser);
 
         [[nodiscard]] std::string getAppName() const;
         [[nodiscard]] std::string getSocketPath() const;
