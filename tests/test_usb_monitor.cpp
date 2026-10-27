@@ -111,6 +111,17 @@ TEST_F(UsbMonitorTest, FailedMountIsNotHandled)
     EXPECT_TRUE(usb_actions.calls.empty());
 }
 
+TEST_F(UsbMonitorTest, FailedMountRemovesMountPoint)
+{
+    system_actions.mount_result = false;
+    UsbContentHandler handler(configuration, usb_actions);
+    UsbMonitor monitor(configuration, system_actions, handler);
+
+    monitor.deviceAdded("/dev/sdb1", "vfat");
+
+    EXPECT_FALSE(fs::exists(mount_dir / "sdb1"));
+}
+
 TEST_F(UsbMonitorTest, RemovedDeviceIsUnmounted)
 {
     UsbContentHandler handler(configuration, usb_actions);

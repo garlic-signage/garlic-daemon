@@ -98,6 +98,14 @@ TEST_F(LocalSocketServerTest, ThrowsWhenSocketCannotBeCreated)
     EXPECT_THROW(LocalSocketServer server((tmp_dir / "missing-dir/test.sock").string(), getuid()), std::runtime_error);
 }
 
+TEST_F(LocalSocketServerTest, ThrowsWhenSocketPathIsTooLong)
+{
+    // sockaddr_un has room for 107 characters plus the terminating 0
+    std::string too_long = (tmp_dir / std::string(110, 'x')).string();
+
+    EXPECT_THROW(LocalSocketServer server(too_long, getuid()), std::runtime_error);
+}
+
 TEST_F(LocalSocketServerTest, SocketFileIsCreatedAndRemoved)
 {
     {
