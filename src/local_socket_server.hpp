@@ -27,6 +27,7 @@
 #include <thread>
 #include <vector>
 #include <sys/types.h>
+#include "file_descriptor.hpp"
 
 /**
  * Unix domain socket for the communication between player and daemon.
@@ -44,7 +45,8 @@
  *     Call it only after start().
  *
  * send() writes a line to all connected clients, e.g. to tell the player something.
- * All methods are thread safe. The destructor stops the thread and removes the socket file.
+ * All methods are thread safe. The destructor stops the thread and removes the socket file,
+ * the file descriptors close themselves (FileDescriptor).
  */
 class LocalSocketServer
 {
@@ -71,13 +73,13 @@ class LocalSocketServer
 
         struct Client
         {
-                int fd;
+                FileDescriptor fd;
                 std::string buffer; // received data without a complete line yet
         };
 
         std::string socket_path_;
         uid_t allowed_uid_;
-        int listen_fd_ = -1;
+        FileDescriptor listen_fd_;
 
         std::mutex clients_mtx_; // the server thread changes the clients, send() writes to them
         std::vector<Client> clients_;

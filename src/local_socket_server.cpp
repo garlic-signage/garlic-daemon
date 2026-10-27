@@ -23,6 +23,7 @@
 #include <cstring>
 #include <stdexcept>
 #include <system_error>
+#include <utility>
 #include <poll.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -39,17 +40,15 @@ LocalSocketServer::LocalSocketServer(const std::string &socket_path, uid_t allow
         throw std::runtime_error("Socket path too long: " + socket_path);
     std::strcpy(address.sun_path, socket_path.c_str());
 
-    listen_fd_ = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
-    if (listen_fd_ < 0)
+    listen_fd_ = FileDescriptor(socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0));
+    if (!listen_fd_.isValid())
         throw std::system_error(errno, std::system_category(), "Cannot create socket");
 
     unlink(socket_path.c_str()); // old socket file, e.g. after a crash
-    if (bind(listen_fd_, reinterpret_cast<sockaddr *>(&address), sizeof(address)) != 0 || listen(listen_fd_, 5) != 0)
-    {
-        int error = errno; // close() could change errno
-        close(listen_fd_);
-        throw std::system_error(error, std::system_category(), "Cannot create socket " + socket_path);
-    }
+    // On error listen_fd_ closes itself, because the members are destroyed when the constructor throws
+    if (bind(listen_fd_.get(), reinterpret_cast<sockaddr *>(&address), sizeof(address)) != 0 ||
+        listen(listen_fd_.get(), 5) != 0)
+        throw std::system_error(errno, std::system_category(), "Cannot create socket " + socket_path);
 
     // Everybody may connect, isAllowed() decides who may stay
     chmod(socket_path.c_str(), 0666);
@@ -61,10 +60,7 @@ LocalSocketServer::~LocalSocketServer()
     if (server_thread_.joinable())
         server_thread_.join();
 
-    for (const Client &client : clients_)
-        close(client.fd);
-    close(listen_fd_);
-    unlink(socket_path_.c_str());
+    unlink(socket_path_.c_str()); // the file descriptors close themselves
 }
 
 void LocalSocketServer::start()
@@ -110,7 +106,7 @@ void LocalSocketServer::send(const std::string &message)
     for (const Client &client : clients_)
     {
         // MSG_NOSIGNAL: no SIGPIPE when the client is gone, the server thread removes it then
-        if (::send(client.fd, line.data(), line.size(), MSG_NOSIGNAL | MSG_DONTWAIT) < 0)
+        if (::send(client.fd.get(), line.data(), line.size(), MSG_NOSIGNAL | MSG_DONTWAIT) < 0)
             logWarning("Cannot send to client: {}", std::system_category().message(errno));
     }
 }
@@ -123,11 +119,11 @@ void LocalSocketServer::loop(std::stop_token stop_token)
 {
     while (!stop_token.stop_requested())
     {
-        std::vector<pollfd> fds = {{listen_fd_, POLLIN, 0}};
+        std::vector<pollfd> fds = {{listen_fd_.get(), POLLIN, 0}};
         {
             std::lock_guard<std::mutex> lock(clients_mtx_);
             for (const Client &client : clients_)
-                fds.push_back({client.fd, POLLIN, 0});
+                fds.push_back({client.fd.get(), POLLIN, 0});
         }
 
         if (poll(fds.data(), fds.size(), POLL_TIMEOUT_MS) <= 0)
@@ -142,11 +138,10 @@ void LocalSocketServer::loop(std::stop_token stop_token)
             if (fds[i].revents == 0)
                 continue;
 
-            auto client = std::ranges::find(clients_, fds[i].fd, &Client::fd);
+            auto client = std::ranges::find(clients_, fds[i].fd, [](const Client &c) { return c.fd.get(); });
             if (client != clients_.end() && !readClient(*client))
             {
-                close(client->fd);
-                clients_.erase(client);
+                clients_.erase(client); // closes the connection
                 logInfo("Client disconnected.");
             }
         }
@@ -156,18 +151,12 @@ void LocalSocketServer::loop(std::stop_token stop_token)
 
 void LocalSocketServer::acceptClient()
 {
-    int fd = accept4(listen_fd_, nullptr, nullptr, SOCK_CLOEXEC);
-    if (fd < 0)
-        return;
-
-    if (!isAllowed(fd))
-    {
-        close(fd);
-        return;
-    }
+    FileDescriptor fd(accept4(listen_fd_.get(), nullptr, nullptr, SOCK_CLOEXEC));
+    if (!fd.isValid() || !isAllowed(fd.get()))
+        return; // a rejected connection closes itself
 
     std::lock_guard<std::mutex> lock(clients_mtx_);
-    clients_.push_back({fd, ""});
+    clients_.push_back({std::move(fd), ""});
     logInfo("Client connected.");
 }
 
@@ -178,7 +167,7 @@ void LocalSocketServer::acceptClient()
 bool LocalSocketServer::readClient(Client &client)
 {
     char buffer[4096];
-    ssize_t bytes_read = recv(client.fd, buffer, sizeof(buffer), 0);
+    ssize_t bytes_read = recv(client.fd.get(), buffer, sizeof(buffer), 0);
     if (bytes_read <= 0)
         return false;
 

@@ -27,6 +27,7 @@ endif ()
 set(SOURCE_FILES
     src/configuration.hpp
     src/configuration.cpp
+    src/file_descriptor.hpp
     src/cmd_parser.hpp
     src/cmd_parser.cpp
     src/watchdog.hpp
