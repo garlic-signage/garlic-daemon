@@ -1,5 +1,7 @@
 # garlic-daemon
 
+[![CI](https://github.com/sagiadinos/garlic-daemon/actions/workflows/ci.yml/badge.svg)](https://github.com/sagiadinos/garlic-daemon/actions/workflows/ci.yml)
+
 Linux daemon for the [garlic-player](https://github.com/sagiadinos/garlic-player) digital signage player.
 
 The player runs as a normal user. The daemon runs as root and does the things

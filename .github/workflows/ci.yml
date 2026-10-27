@@ -1,0 +1,29 @@
+# Builds and tests the daemon on Debian Trixie (GCC 14, the minimum compiler).
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  trixie:
+    runs-on: ubuntu-latest
+    container: debian:trixie
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - name: Install dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends g++ cmake make pkg-config libconfig++-dev libudev-dev libgtest-dev
+
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DWARNINGS_AS_ERRORS=ON
+
+      - name: Build
+        run: cmake --build build -j "$(nproc)"
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
