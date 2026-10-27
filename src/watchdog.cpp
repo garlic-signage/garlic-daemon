@@ -21,8 +21,8 @@
 #include <algorithm>
 #include <cerrno>
 #include <csignal>
-#include <cstring>
 #include <fstream>
+#include <system_error>
 #include <thread>
 #include <grp.h>
 #include <pwd.h>
@@ -173,7 +173,7 @@ void Watchdog::start()
     pid_t pid = fork();
     if (pid < 0)
     {
-        logError("Cannot start {}: {}", player_name_, strerror(errno));
+        logError("Cannot start {}: {}", player_name_, std::system_category().message(errno));
         return;
     }
 

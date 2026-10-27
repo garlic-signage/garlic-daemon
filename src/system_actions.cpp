@@ -19,7 +19,7 @@
 #include "system_actions.hpp"
 
 #include <cerrno>
-#include <cstring>
+#include <system_error>
 #include <unistd.h>
 #include <sys/mount.h>
 #include <sys/reboot.h>
@@ -37,7 +37,7 @@ bool SystemActions::mount(const std::string &device, const std::string &mount_po
     unsigned long flags = MS_RDONLY | MS_NOSUID | MS_NODEV | MS_NOEXEC;
     if (::mount(device.c_str(), mount_point.c_str(), fs_type.c_str(), flags, nullptr) != 0)
     {
-        logError("Cannot mount {} to {}: {}", device, mount_point, strerror(errno));
+        logError("Cannot mount {} to {}: {}", device, mount_point, std::system_category().message(errno));
         return false;
     }
     return true;
@@ -46,5 +46,5 @@ bool SystemActions::mount(const std::string &device, const std::string &mount_po
 void SystemActions::unmount(const std::string &mount_point)
 {
     if (umount2(mount_point.c_str(), MNT_DETACH) != 0)
-        logError("Cannot unmount {}: {}", mount_point, strerror(errno));
+        logError("Cannot unmount {}: {}", mount_point, std::system_category().message(errno));
 }

@@ -22,6 +22,7 @@
 #include <cerrno>
 #include <cstring>
 #include <stdexcept>
+#include <system_error>
 #include <poll.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -40,14 +41,14 @@ LocalSocketServer::LocalSocketServer(const std::string &socket_path, uid_t allow
 
     listen_fd_ = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
     if (listen_fd_ < 0)
-        throw std::runtime_error(std::string("Cannot create socket: ") + strerror(errno));
+        throw std::system_error(errno, std::system_category(), "Cannot create socket");
 
     unlink(socket_path.c_str()); // old socket file, e.g. after a crash
     if (bind(listen_fd_, reinterpret_cast<sockaddr *>(&address), sizeof(address)) != 0 || listen(listen_fd_, 5) != 0)
     {
-        std::string error = strerror(errno);
+        int error = errno; // close() could change errno
         close(listen_fd_);
-        throw std::runtime_error("Cannot create socket " + socket_path + ": " + error);
+        throw std::system_error(error, std::system_category(), "Cannot create socket " + socket_path);
     }
 
     // Everybody may connect, isAllowed() decides who may stay
@@ -110,7 +111,7 @@ void LocalSocketServer::send(const std::string &message)
     {
         // MSG_NOSIGNAL: no SIGPIPE when the client is gone, the server thread removes it then
         if (::send(client.fd, line.data(), line.size(), MSG_NOSIGNAL | MSG_DONTWAIT) < 0)
-            logWarning("Cannot send to client: {}", strerror(errno));
+            logWarning("Cannot send to client: {}", std::system_category().message(errno));
     }
 }
 
