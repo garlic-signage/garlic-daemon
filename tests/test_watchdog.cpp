@@ -186,6 +186,27 @@ TEST_F(WatchdogTest, StoppedPlayerIsStartedWithoutDelay)
     EXPECT_TRUE(watchdog.isPlayerRunning());
 }
 
+TEST_F(WatchdogTest, PlayerRunningLongEnoughResetsCrashCount)
+{
+    // Takes BACKOFF_START (5 seconds) for the restart after the first crash.
+    // The stable runtime is 300 ms instead of 60 seconds, a reboot comes after 2 crashes in a row.
+    Watchdog watchdog(makeConfiguration("command = \"sleep 30\"; reboot_after_crashes = 2;"), system_actions, 300ms);
+    crashPlayer(watchdog); // crash 1
+    std::this_thread::sleep_for(5100ms);
+    watchdog.check(); // start after the backoff
+    pid_t pid = watchdog.getPlayerPid();
+    ASSERT_GT(pid, 0);
+
+    std::this_thread::sleep_for(400ms); // runs longer than the stable runtime
+    kill(pid, SIGKILL);
+    std::this_thread::sleep_for(100ms);
+    watchdog.check(); // notices the end, which is no crash, and starts again at once
+
+    // Without the reset this would be crash 2: reboot and a backoff of 10 seconds
+    EXPECT_EQ(system_actions.reboot_calls, 0);
+    EXPECT_TRUE(watchdog.isPlayerRunning());
+}
+
 TEST(Watchdog, RestartDelayDoublesUpToMaximum)
 {
     EXPECT_EQ(Watchdog::restartDelay(0), 0s);

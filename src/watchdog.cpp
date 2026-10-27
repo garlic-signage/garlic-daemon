@@ -32,12 +32,14 @@
 
 extern char **environ;
 
-Watchdog::Watchdog(const Configuration &configuration, SystemActions &system_actions)
+Watchdog::Watchdog(const Configuration &configuration, SystemActions &system_actions,
+                   std::chrono::milliseconds stable_runtime)
     : player_name_(configuration.getPlayerName()), player_command_(configuration.getPlayerCommand()),
       player_user_(configuration.getPlayerUser()), player_environment_(configuration.getPlayerEnvironment()),
       heartbeat_timeout_(configuration.getHeartbeatTimeout()),
       reboot_after_crashes_(configuration.getRebootAfterCrashes()),
-      reboot_stamp_file_(configuration.getStateDir() + "/last_reboot"), system_actions_(system_actions)
+      reboot_stamp_file_(configuration.getStateDir() + "/last_reboot"), stable_runtime_(stable_runtime),
+      system_actions_(system_actions)
 {
 }
 
@@ -273,7 +275,7 @@ bool Watchdog::isHanging() const
 void Watchdog::playerEnded()
 {
     auto now = std::chrono::steady_clock::now();
-    if (now - started_at_ < STABLE_RUNTIME)
+    if (now - started_at_ < stable_runtime_)
         crash_count_++;
     else
         crash_count_ = 0; // it ran long enough, so this is no crash loop

@@ -51,7 +51,9 @@
 class Watchdog
 {
     public:
-        Watchdog(const Configuration &configuration, SystemActions &system_actions);
+        /// stable_runtime: see Backoff above, only tests use a shorter time.
+        Watchdog(const Configuration &configuration, SystemActions &system_actions,
+                 std::chrono::milliseconds stable_runtime = STABLE_RUNTIME);
 
         /// Stops the player.
         ~Watchdog();
@@ -91,6 +93,7 @@ class Watchdog
         std::chrono::seconds heartbeat_timeout_;
         int reboot_after_crashes_;
         std::string reboot_stamp_file_;
+        std::chrono::milliseconds stable_runtime_;
         SystemActions &system_actions_;
 
         std::mutex mtx_;
