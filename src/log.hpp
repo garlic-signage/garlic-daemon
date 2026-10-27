@@ -32,10 +32,13 @@
  * Log functions for the daemon, they write one line per call to std::clog:
  *
  *     logInfo("Started {} with pid {}", player_name_, pid);
- *     -> [2026-10-27_15:48:52.064] INFO-> Started garlic-player with pid 4774
+ *     -> <6>[2026-10-27_15:48:52.064] INFO-> Started garlic-player with pid 4774
  *
  * Warnings, errors and debug messages also show where they were logged:
- *     [2026-10-27_15:48:52.064] WARNING watchdog.cpp:57-> ...
+ *     <4>[2026-10-27_15:48:52.064] WARNING watchdog.cpp:57-> ...
+ *
+ * The prefix <N> is the syslog priority. journald removes it and stores the line
+ * with this priority, so e.g. "journalctl -u garlic-daemon -p warning" works.
  *
  * The format string is checked at compile time like with std::format().
  */
@@ -59,38 +62,44 @@ inline std::string getLogTime(std::chrono::system_clock::time_point time)
     return std::format("[{:%F_%T}]", std::chrono::floor<std::chrono::milliseconds>(time));
 }
 
+// Syslog priorities, see "man sd-daemon"
+constexpr int LOG_PRIORITY_ERROR   = 3;
+constexpr int LOG_PRIORITY_WARNING = 4;
+constexpr int LOG_PRIORITY_INFO    = 6;
+constexpr int LOG_PRIORITY_DEBUG   = 7;
+
 /// Writes the whole line at once, so lines from different threads do not mix
-inline void writeLog(const char *type, const std::string &message)
+inline void writeLog(int priority, const char *type, const std::string &message)
 {
-    std::println(std::clog, "{} {}-> {}", getLogTime(std::chrono::system_clock::now()), type, message);
+    std::println(std::clog, "<{}>{} {}-> {}", priority, getLogTime(std::chrono::system_clock::now()), type, message);
 }
 
-inline void writeLog(const char *type, const std::source_location &location, const std::string &message)
+inline void writeLog(int priority, const char *type, const std::source_location &location, const std::string &message)
 {
     std::string file = std::filesystem::path(location.file_name()).filename().string();
-    std::println(std::clog, "{} {} {}:{}-> {}", getLogTime(std::chrono::system_clock::now()), type, file,
+    std::println(std::clog, "<{}>{} {} {}:{}-> {}", priority, getLogTime(std::chrono::system_clock::now()), type, file,
                  location.line(), message);
 }
 
 // std::type_identity_t: the types of the arguments are deduced from args only, not from the format string
 template <typename... Args> void logInfo(LogFormat<std::type_identity_t<Args>...> format, Args &&...args)
 {
-    writeLog("INFO", std::format(format.format, std::forward<Args>(args)...));
+    writeLog(LOG_PRIORITY_INFO, "INFO", std::format(format.format, std::forward<Args>(args)...));
 }
 
 template <typename... Args> void logWarning(LogFormat<std::type_identity_t<Args>...> format, Args &&...args)
 {
-    writeLog("WARNING", format.location, std::format(format.format, std::forward<Args>(args)...));
+    writeLog(LOG_PRIORITY_WARNING, "WARNING", format.location, std::format(format.format, std::forward<Args>(args)...));
 }
 
 template <typename... Args> void logError(LogFormat<std::type_identity_t<Args>...> format, Args &&...args)
 {
-    writeLog("ERROR", format.location, std::format(format.format, std::forward<Args>(args)...));
+    writeLog(LOG_PRIORITY_ERROR, "ERROR", format.location, std::format(format.format, std::forward<Args>(args)...));
 }
 
 template <typename... Args> void logDebug(LogFormat<std::type_identity_t<Args>...> format, Args &&...args)
 {
-    writeLog("DEBUG", format.location, std::format(format.format, std::forward<Args>(args)...));
+    writeLog(LOG_PRIORITY_DEBUG, "DEBUG", format.location, std::format(format.format, std::forward<Args>(args)...));
 }
 
 #endif // LOG_HPP

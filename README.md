@@ -115,6 +115,9 @@ because a symlink on a stick could point to a file of the system.
 
 All messages go to the journal: `journalctl -u garlic-daemon`
 
+Each message has its priority (error, warning, info, debug) in the journal,
+e.g. only warnings and errors: `journalctl -u garlic-daemon -p warning`
+
 | Message | Meaning |
 |---|---|
 | `Started garlic-player with pid …` | player started |
