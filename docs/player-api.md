@@ -32,7 +32,9 @@ The player should try again every few seconds. Messages sent while there is no c
 ## Message format
 
 - One message per line, ended by `\n`. `\r\n` is accepted too.
-- A message is a command, optionally followed by a space and an argument: `play_smil /path/index.smil`
+- A message is a command, optionally followed by a space and an argument: `play_smil /path/index.smil`.
+  So far only messages from the daemon have arguments. The daemon compares the whole line,
+  so e.g. `reboot now` is an unknown message.
 - Commands are case-sensitive and have no leading or trailing spaces.
 - UTF-8. A line may have at most 8192 bytes, a longer line closes the connection.
 - Empty lines are ignored.
@@ -72,10 +74,18 @@ The hang detection is off (`0`) by default, until the player sends heartbeats.
 
 ## What the player gets from the daemon
 
-- **User**: when the daemon runs as root, the player runs as `Player.user` with its groups.
+The daemon normally runs as root (systemd unit). Then:
+
+- **User**: the player runs as `Player.user` with its groups.
 - **Environment**: `HOME`, `USER`, `LOGNAME`, `PATH=/usr/local/bin:/usr/bin:/bin`
   and the entries of `Player.environment`, e.g. `DISPLAY=:0`.
 - **Working directory**: the home directory of `Player.user`.
+
+When the daemon runs as normal user (e.g. during development), the player runs as the same user,
+gets the environment of the daemon plus `Player.environment`, and the working directory `/`.
+
+In both cases:
+
 - **Process group**: the player gets its own. Child processes of the player are stopped together with it.
 - **Stop**: `SIGTERM` to the process group, after 5 seconds `SIGKILL`.
   The player should handle `SIGTERM` and end within 5 seconds.

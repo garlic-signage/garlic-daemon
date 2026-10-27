@@ -44,7 +44,7 @@ void MessageDispatcher::dispatch(const std::string &message)
     }
     else
     {
-        logWarning("Signal {} is not supported.", message);
+        logWarning("Unknown message {}, ignored.", message);
     }
 }
 

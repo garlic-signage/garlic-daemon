@@ -121,6 +121,7 @@ e.g. only warnings and errors: `journalctl -u garlic-daemon -p warning`
 | Message | Meaning |
 |---|---|
 | `Started garlic-player with pid …` | player started |
+| `User … does not exist, cannot start garlic-player` | `Player.user` is missing on the system, the player is not started |
 | `garlic-player exited with code …` / `was killed by signal …` | player has ended |
 | `garlic-player sent no heartbeat for … seconds, restart it.` | hang detected |
 | `garlic-player crashed … times in a row, next start in … seconds.` | backoff |
@@ -134,6 +135,9 @@ e.g. only warnings and errors: `journalctl -u garlic-daemon -p warning`
 | `Not implemented yet: …` | stub of a USB action, see above |
 | `Client connected.` / `Client disconnected.` | player (or another client) connected to the socket |
 | `Rejected connection from uid …` | a user other than `Player.user` or root tried to connect |
+| `Unknown message …, ignored.` | a client sent a message the daemon does not know, see [docs/player-api.md](docs/player-api.md) |
+| `Cannot read config file …` | the config file does not exist or is not readable, the daemon ends |
+| `Config file …:… - …` | syntax error in the config file (file, line, error), the daemon ends |
 
 ## Requirements
 
@@ -153,6 +157,9 @@ ctest --test-dir build --output-on-failure
 Without tests: `cmake -S . -B build -DBUILD_TESTS=OFF`
 
 Warnings as errors: `cmake -S . -B build -DWARNINGS_AS_ERRORS=ON`. The code must build without warnings, see `CONVENTIONS.md`.
+
+CI: GitHub Actions builds and tests every push on Debian Trixie (GCC 14) with warnings as errors,
+see `.github/workflows/ci.yml`. The tests run with coverage, the badge above shows the line coverage of `src/`.
 
 ## Install
 
