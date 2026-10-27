@@ -9,7 +9,9 @@ on:
 jobs:
   trixie:
     runs-on: ubuntu-latest
-    container: debian:trixie
+    container:
+      image: debian:trixie
+      options: --init # tini as PID 1 reaps orphaned processes like systemd, the watchdog tests need it
     permissions:
       contents: write # push the coverage badge
     env:
