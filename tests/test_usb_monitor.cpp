@@ -25,7 +25,7 @@
 
 namespace fs = std::filesystem;
 
-// Tests deviceAdded() and deviceRemoved() without udev and without real mounts.
+// Tests handleDevice(), deviceAdded() and deviceRemoved() without udev and without real mounts.
 // The mount directory is a temporary directory.
 class UsbMonitorTest : public ::testing::Test
 {
@@ -143,4 +143,100 @@ TEST_F(UsbMonitorTest, DestructorUnmountsAll)
     }
 
     EXPECT_EQ(system_actions.unmount_calls.size(), 2);
+}
+
+// handleDevice() gets the values udev reports, this is a USB stick with one FAT partition
+const UsbMonitor::Device USB_STICK = {
+    .action = "add", .node = "/dev/sdb1", .bus = "usb", .fs_usage = "filesystem", .fs_type = "vfat"};
+
+TEST_F(UsbMonitorTest, AddedUsbPartitionIsMounted)
+{
+    UsbContentHandler handler(configuration, usb_actions);
+    UsbMonitor monitor(configuration, system_actions, handler);
+
+    monitor.handleDevice(USB_STICK);
+
+    ASSERT_EQ(system_actions.mount_calls.size(), 1);
+    EXPECT_EQ(system_actions.mount_calls[0].device, "/dev/sdb1");
+    EXPECT_EQ(system_actions.mount_calls[0].fs_type, "vfat");
+}
+
+TEST_F(UsbMonitorTest, AlreadyPluggedInDeviceWithoutActionIsMounted)
+{
+    UsbContentHandler handler(configuration, usb_actions);
+    UsbMonitor monitor(configuration, system_actions, handler);
+    UsbMonitor::Device device = USB_STICK;
+    device.action             = ""; // devices from addPluggedDevices()
+
+    monitor.handleDevice(device);
+
+    EXPECT_EQ(system_actions.mount_calls.size(), 1);
+}
+
+TEST_F(UsbMonitorTest, DeviceNotOnUsbIsNotMounted)
+{
+    UsbContentHandler handler(configuration, usb_actions);
+    UsbMonitor monitor(configuration, system_actions, handler);
+    UsbMonitor::Device device = USB_STICK;
+    device.bus                = "ata"; // e.g. the system disk
+
+    monitor.handleDevice(device);
+
+    EXPECT_TRUE(system_actions.mount_calls.empty());
+}
+
+TEST_F(UsbMonitorTest, DeviceWithoutFilesystemIsNotMounted)
+{
+    UsbContentHandler handler(configuration, usb_actions);
+    UsbMonitor monitor(configuration, system_actions, handler);
+
+    // The whole disk with a partition table, an encrypted partition, a device without anything on it
+    for (const char *fs_usage : {"", "crypto", "other"})
+    {
+        UsbMonitor::Device device = USB_STICK;
+        device.fs_usage           = fs_usage;
+        monitor.handleDevice(device);
+    }
+
+    EXPECT_TRUE(system_actions.mount_calls.empty());
+}
+
+TEST_F(UsbMonitorTest, DeviceWithoutNodeIsIgnored)
+{
+    UsbContentHandler handler(configuration, usb_actions);
+    UsbMonitor monitor(configuration, system_actions, handler);
+    UsbMonitor::Device device = USB_STICK;
+    device.node               = "";
+
+    monitor.handleDevice(device);
+
+    EXPECT_TRUE(system_actions.mount_calls.empty());
+}
+
+TEST_F(UsbMonitorTest, OtherActionsAreIgnored)
+{
+    UsbContentHandler handler(configuration, usb_actions);
+    UsbMonitor monitor(configuration, system_actions, handler);
+
+    for (const char *action : {"change", "move", "bind"})
+    {
+        UsbMonitor::Device device = USB_STICK;
+        device.action             = action;
+        monitor.handleDevice(device);
+    }
+
+    EXPECT_TRUE(system_actions.mount_calls.empty());
+    EXPECT_TRUE(system_actions.unmount_calls.empty());
+}
+
+TEST_F(UsbMonitorTest, RemoveActionUnmounts)
+{
+    UsbContentHandler handler(configuration, usb_actions);
+    UsbMonitor monitor(configuration, system_actions, handler);
+    monitor.handleDevice(USB_STICK);
+
+    // A removed device may no longer report its properties, only action and node count
+    monitor.handleDevice({.action = "remove", .node = "/dev/sdb1", .bus = "", .fs_usage = "", .fs_type = ""});
+
+    EXPECT_EQ(system_actions.unmount_calls, std::vector<std::string>{(mount_dir / "sdb1").string()});
 }

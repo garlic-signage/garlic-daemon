@@ -38,7 +38,7 @@ struct udev_device;
  * /media/garlic/sda1, and then passed to the UsbContentHandler.
  * Sticks that are already plugged in when run() starts are handled too.
  *
- * deviceAdded() and deviceRemoved() contain the logic without udev, so tests can call them.
+ * handleDevice(), deviceAdded() and deviceRemoved() contain the logic without udev, so tests can call them.
  * The class is not thread safe, all methods are called from the USB thread of the Daemon.
  */
 class UsbMonitor
@@ -50,8 +50,21 @@ class UsbMonitor
         /// Unmounts all sticks that are still mounted.
         ~UsbMonitor();
 
+        /// The udev values of a block device that decide what happens with it
+        struct Device
+        {
+                std::string action;   // "add", "remove", "change" ..., empty for an already plugged in device
+                std::string node;     // e.g. "/dev/sdb1", empty for devices without device file
+                std::string bus;      // udev property ID_BUS, e.g. "usb" or "ata"
+                std::string fs_usage; // udev property ID_FS_USAGE, "filesystem" for a mountable partition
+                std::string fs_type;  // udev property ID_FS_TYPE, e.g. "vfat"
+        };
+
         /// Waits for udev events until a stop is requested.
         void run(std::stop_token stop_token);
+
+        /// Mounts a USB device with a filesystem when it is added, unmounts it when it is removed.
+        void handleDevice(const Device &device);
 
         /// Mounts the device and passes it to the content handler.
         void deviceAdded(const std::string &device_node, const std::string &fs_type);
@@ -71,7 +84,7 @@ class UsbMonitor
         std::map<std::string, std::string> mounted_; // device node -> mount point
 
         void addPluggedDevices(udev *udev_context);
-        void handleDevice(udev_device *device);
+        void handleUdevDevice(udev_device *device);
         void unmountAll();
 };
 

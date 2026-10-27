@@ -87,7 +87,7 @@ void UsbMonitor::run(std::stop_token stop_token)
 
         UdevDevice device(udev_monitor_receive_device(monitor.get()));
         if (device)
-            handleDevice(device.get());
+            handleUdevDevice(device.get());
     }
 }
 
@@ -151,37 +151,46 @@ void UsbMonitor::addPluggedDevices(udev *udev_context)
     {
         UdevDevice device(udev_device_new_from_syspath(udev_context, udev_list_entry_get_name(entry)));
         if (device)
-            handleDevice(device.get());
+            handleUdevDevice(device.get());
     }
 }
 
 /**
- * A device from an event or from the list of plugged devices.
+ * A device from an event or from the list of plugged devices, read from udev.
+ */
+void UsbMonitor::handleUdevDevice(udev_device *device)
+{
+    const char *node   = udev_device_get_devnode(device);
+    const char *action = udev_device_get_action(device);
+    handleDevice({.action   = action != nullptr ? action : "",
+                  .node     = node != nullptr ? node : "",
+                  .bus      = property(device, "ID_BUS"),
+                  .fs_usage = property(device, "ID_FS_USAGE"),
+                  .fs_type  = property(device, "ID_FS_TYPE")});
+}
+
+/**
  * Only partitions or whole disks on USB with a filesystem are mounted.
  */
-void UsbMonitor::handleDevice(udev_device *device)
+void UsbMonitor::handleDevice(const Device &device)
 {
-    const char *device_node = udev_device_get_devnode(device);
-    if (device_node == nullptr)
+    if (device.node.empty())
         return;
 
-    // Devices from addPluggedDevices() have no action
-    const char *action      = udev_device_get_action(device);
-    std::string action_name = action != nullptr ? action : "add";
-
-    if (action_name == "remove")
+    if (device.action == "remove")
     {
-        deviceRemoved(device_node);
+        deviceRemoved(device.node);
         return;
     }
 
-    if (action_name != "add")
+    // Devices from addPluggedDevices() have no action, they count as added
+    if (device.action != "add" && !device.action.empty())
         return;
 
-    if (property(device, "ID_BUS") != "usb" || property(device, "ID_FS_USAGE") != "filesystem")
+    if (device.bus != "usb" || device.fs_usage != "filesystem")
         return;
 
-    deviceAdded(device_node, property(device, "ID_FS_TYPE"));
+    deviceAdded(device.node, device.fs_type);
 }
 
 void UsbMonitor::unmountAll()
