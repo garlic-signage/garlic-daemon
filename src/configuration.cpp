@@ -19,38 +19,53 @@
 #include "configuration.hpp"
 
 #include <charconv>
+#include <format>
 #include <stdexcept>
 #include "log.hpp"
 
 Configuration::Configuration() = default;
 
+namespace
+{
+/// Reads a value if it exists. A wrong type, e.g. heartbeat_timeout = "60", is an error,
+/// otherwise the default would be used without notice.
+template <typename T> void readValue(const libconfig::Config *config, const char *path, T &value)
+{
+    if (config->exists(path) && !config->lookupValue(path, value))
+        throw std::runtime_error(std::format("Config value {} has the wrong type", path));
+}
+} // namespace
+
 void Configuration::readLibConfigValues(const libconfig::Config *config)
 {
     logInfo("Start read values from config file");
 
-    // lookupValue() leaves the default when the value does not exist
-    config->lookupValue("app_name", app_name_);
-    config->lookupValue("socket", socket_path_);
-    config->lookupValue("state_dir", state_dir_);
+    readValue(config, "app_name", app_name_);
+    readValue(config, "socket", socket_path_);
+    readValue(config, "state_dir", state_dir_);
 
-    config->lookupValue("Usb.mount_dir", usb_mount_dir_);
-    config->lookupValue("Usb.firmware_file", usb_firmware_file_);
+    readValue(config, "Usb.mount_dir", usb_mount_dir_);
+    readValue(config, "Usb.firmware_file", usb_firmware_file_);
 
-    config->lookupValue("Player.name", player_name_);
-    config->lookupValue("Player.command", player_command_);
-    config->lookupValue("Player.user", player_user_);
-    config->lookupValue("Player.heartbeat_timeout", heartbeat_timeout_);
-    config->lookupValue("Player.reboot_after_crashes", reboot_after_crashes_);
+    readValue(config, "Player.name", player_name_);
+    readValue(config, "Player.command", player_command_);
+    readValue(config, "Player.user", player_user_);
+    readValue(config, "Player.heartbeat_timeout", heartbeat_timeout_);
+    readValue(config, "Player.reboot_after_crashes", reboot_after_crashes_);
 
     // List of "KEY=VALUE" strings, e.g. environment = ["DISPLAY=:0"];
     if (!config->exists("Player.environment"))
         return;
 
     const libconfig::Setting &environment = config->lookup("Player.environment");
+    if (!environment.isArray() && !environment.isList())
+        throw std::runtime_error("Player.environment needs a list like [\"KEY=VALUE\"]");
+
     for (int i = 0; i < environment.getLength(); i++)
     {
         // Without a name before "=" the watchdog could not replace a variable of the same name
-        std::string entry = environment[i].c_str();
+        const libconfig::Setting &setting = environment[i];
+        std::string entry                 = setting.getType() == libconfig::Setting::TypeString ? setting.c_str() : "";
         if (entry.find('=') == std::string::npos || entry.starts_with('='))
             throw std::runtime_error("Player.environment needs entries like \"KEY=VALUE\", not '" + entry + "'");
         player_environment_.push_back(entry);

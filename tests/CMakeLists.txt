@@ -23,7 +23,7 @@ gtest_discover_tests(garlic-tests PROPERTIES TIMEOUT 10)
 
 # The daemon itself must end with exit code 1 when the config file is missing or invalid.
 # A daemon that does not end fails by the timeout.
-foreach (CASE missing invalid-syntax invalid-environment)
+foreach (CASE missing invalid-syntax invalid-environment invalid-type)
     add_test(NAME Daemon.EndsWithConfig-${CASE}
              COMMAND sh -c "\"$1\" --config \"$2\" --socket /tmp/garlic-test-config.sock; test $? -eq 1"
                      sh $<TARGET_FILE:garlic-daemon> ${CMAKE_CURRENT_SOURCE_DIR}/data/${CASE}.conf)

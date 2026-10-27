@@ -149,6 +149,17 @@ TEST(Configuration, EnvironmentEntryWithoutNameOrValueThrows)
     }
 }
 
+TEST(Configuration, WrongTypeThrows)
+{
+    // Otherwise the default would be used without notice, e.g. no hang detection
+    for (const char *content :
+         {"socket = 1;", "Usb = { mount_dir = true; };", "Player = { heartbeat_timeout = \"60\"; };",
+          "Player = { environment = \"DISPLAY=:0\"; };", "Player = { environment = (\"DISPLAY=:0\", 1); };"})
+    {
+        EXPECT_THROW(readConfiguration(content), std::runtime_error) << content;
+    }
+}
+
 TEST(Configuration, EnvironmentEntryWithEmptyValueIsAllowed)
 {
     Configuration configuration = readConfiguration("Player = { environment = [\"NO_PROXY=\"]; };");

@@ -143,6 +143,7 @@ e.g. only warnings and errors: `journalctl -u garlic-daemon -p warning`
 | `Unknown message …, ignored.` | a client sent a message the daemon does not know, see [docs/player-api.md](docs/player-api.md) |
 | `Cannot read config file …` | the config file does not exist or is not readable, the daemon ends |
 | `Config file …:… - …` | syntax error in the config file (file, line, error), the daemon ends |
+| `Config value … has the wrong type` | e.g. `heartbeat_timeout = "60"` instead of `60`, the daemon ends |
 
 ## Requirements
 
