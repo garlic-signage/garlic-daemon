@@ -106,6 +106,30 @@ TEST_F(WatchdogTest, CheckStartsPlayer)
     EXPECT_TRUE(processExists(watchdog.getPlayerPid()));
 }
 
+TEST_F(WatchdogTest, MissingPlayerUserDoesNotStartPlayer)
+{
+    // Only as root the watchdog switches to Player.user, as normal user it ignores the user
+    if (getuid() != 0)
+        GTEST_SKIP() << "needs root, as normal user the player runs as the user of the tests";
+
+    fs::path marker = tmp_dir / "started";
+    libconfig::Config config;
+    config.readString("state_dir = \"" + tmp_dir.string() +
+                      "\"; Player = { user = \"garlic-test-no-such-user\"; command = \"touch " + marker.string() +
+                      "\"; };");
+    Configuration configuration;
+    configuration.readLibConfigValues(&config);
+    Watchdog watchdog(configuration, system_actions);
+
+    watchdog.check();
+    watchdog.check(); // tries again, still no player
+
+    EXPECT_FALSE(watchdog.isPlayerRunning());
+    std::this_thread::sleep_for(100ms);
+    EXPECT_FALSE(fs::exists(marker));
+    EXPECT_EQ(system_actions.reboot_calls, 0); // a missing user is no crash
+}
+
 TEST_F(WatchdogTest, CheckDoesNotStartSecondPlayer)
 {
     Watchdog watchdog(makeConfiguration("command = \"sleep 30\";"), system_actions);
