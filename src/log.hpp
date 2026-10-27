@@ -19,7 +19,6 @@
 #ifndef LOG_HPP
 #define LOG_HPP
 
-#include <chrono>
 #include <filesystem>
 #include <format>
 #include <iostream>
@@ -32,13 +31,14 @@
  * Log functions for the daemon, they write one line per call to std::clog:
  *
  *     logInfo("Started {} with pid {}", player_name_, pid);
- *     -> <6>[2026-10-27_15:48:52.064] INFO-> Started garlic-player with pid 4774
+ *     -> <6>INFO-> Started garlic-player with pid 4774
  *
  * Warnings, errors and debug messages also show where they were logged:
- *     <4>[2026-10-27_15:48:52.064] WARNING watchdog.cpp:57-> ...
+ *     <4>WARNING watchdog.cpp:57-> ...
  *
  * The prefix <N> is the syslog priority. journald removes it and stores the line
  * with this priority, so e.g. "journalctl -u garlic-daemon -p warning" works.
+ * There is no own time stamp, journald stores the time of every line.
  *
  * The format string is checked at compile time like with std::format().
  */
@@ -56,12 +56,6 @@ template <typename... Args> struct LogFormat
         }
 };
 
-/// Time stamp in UTC with milliseconds, e.g. [2026-10-27_15:48:52.064]
-inline std::string getLogTime(std::chrono::system_clock::time_point time)
-{
-    return std::format("[{:%F_%T}]", std::chrono::floor<std::chrono::milliseconds>(time));
-}
-
 // Syslog priorities, see "man sd-daemon"
 constexpr int LOG_PRIORITY_ERROR   = 3;
 constexpr int LOG_PRIORITY_WARNING = 4;
@@ -71,14 +65,13 @@ constexpr int LOG_PRIORITY_DEBUG   = 7;
 /// Writes the whole line at once, so lines from different threads do not mix
 inline void writeLog(int priority, const char *type, const std::string &message)
 {
-    std::println(std::clog, "<{}>{} {}-> {}", priority, getLogTime(std::chrono::system_clock::now()), type, message);
+    std::println(std::clog, "<{}>{}-> {}", priority, type, message);
 }
 
 inline void writeLog(int priority, const char *type, const std::source_location &location, const std::string &message)
 {
     std::string file = std::filesystem::path(location.file_name()).filename().string();
-    std::println(std::clog, "<{}>{} {} {}:{}-> {}", priority, getLogTime(std::chrono::system_clock::now()), type, file,
-                 location.line(), message);
+    std::println(std::clog, "<{}>{} {}:{}-> {}", priority, type, file, location.line(), message);
 }
 
 // std::type_identity_t: the types of the arguments are deduced from args only, not from the format string
