@@ -26,69 +26,34 @@ Configuration::Configuration() = default;
 
 void Configuration::readLibConfigValues(const libconfig::Config *config)
 {
-    try
+    logInfo("Start read values from config file");
+
+    // lookupValue() leaves the default when the value does not exist
+    config->lookupValue("app_name", app_name_);
+    config->lookupValue("socket", socket_path_);
+    config->lookupValue("state_dir", state_dir_);
+
+    config->lookupValue("Usb.mount_dir", usb_mount_dir_);
+    config->lookupValue("Usb.firmware_file", usb_firmware_file_);
+
+    config->lookupValue("Player.name", player_name_);
+    config->lookupValue("Player.command", player_command_);
+    config->lookupValue("Player.user", player_user_);
+    config->lookupValue("Player.heartbeat_timeout", heartbeat_timeout_);
+    config->lookupValue("Player.reboot_after_crashes", reboot_after_crashes_);
+
+    // List of "KEY=VALUE" strings, e.g. environment = ["DISPLAY=:0"];
+    if (!config->exists("Player.environment"))
+        return;
+
+    const libconfig::Setting &environment = config->lookup("Player.environment");
+    for (int i = 0; i < environment.getLength(); i++)
     {
-
-        logInfo("Start read values from config file");
-
-        if (config->exists("app_name"))
-            config->lookupValue("app_name", app_name_);
-
-        if (config->exists("socket"))
-            config->lookupValue("socket", socket_path_);
-
-        if (config->exists("state_dir"))
-            config->lookupValue("state_dir", state_dir_);
-
-        if (config->exists("Usb"))
-        {
-            const libconfig::Setting &usb = config->lookup("Usb");
-
-            if (usb.exists("mount_dir"))
-                usb.lookupValue("mount_dir", usb_mount_dir_);
-
-            if (usb.exists("firmware_file"))
-                usb.lookupValue("firmware_file", usb_firmware_file_);
-        }
-
-        if (!config->exists("Player"))
-            return;
-
-        libconfig::Setting &player = config->lookup("Player");
-
-        if (player.exists("name"))
-            player.lookupValue("name", player_name_);
-
-        if (player.exists("command"))
-            player.lookupValue("command", player_command_);
-
-        if (player.exists("user"))
-            player.lookupValue("user", player_user_);
-
-        if (player.exists("heartbeat_timeout"))
-            player.lookupValue("heartbeat_timeout", heartbeat_timeout_);
-
-        if (player.exists("reboot_after_crashes"))
-            player.lookupValue("reboot_after_crashes", reboot_after_crashes_);
-
-        // List of "KEY=VALUE" strings, e.g. environment = ["DISPLAY=:0"];
-        if (player.exists("environment"))
-        {
-            const libconfig::Setting &environment = player["environment"];
-            for (int i = 0; i < environment.getLength(); i++)
-            {
-                // Without a name before "=" the watchdog could not replace a variable of the same name
-                std::string entry = environment[i].c_str();
-                if (entry.find('=') == std::string::npos || entry.starts_with('='))
-                    throw std::runtime_error("Player.environment needs entries like \"KEY=VALUE\", not '" + entry +
-                                             "'");
-                player_environment_.push_back(entry);
-            }
-        }
-    }
-    catch (const libconfig::ParseException &e)
-    {
-        logError("Parse error at {}:{} - {}", e.getFile(), e.getLine(), e.getError());
+        // Without a name before "=" the watchdog could not replace a variable of the same name
+        std::string entry = environment[i].c_str();
+        if (entry.find('=') == std::string::npos || entry.starts_with('='))
+            throw std::runtime_error("Player.environment needs entries like \"KEY=VALUE\", not '" + entry + "'");
+        player_environment_.push_back(entry);
     }
 }
 

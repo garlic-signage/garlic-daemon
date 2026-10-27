@@ -54,6 +54,7 @@ void Watchdog::check()
     if (!is_active_)
         return;
 
+    reapEndedPlayer();
     if (isRunning() && isHanging())
     {
         logWarning("{} sent no heartbeat for {} seconds, restart it.", player_name_, heartbeat_timeout_.count());
@@ -93,13 +94,15 @@ void Watchdog::stopPlayer()
 bool Watchdog::isPlayerRunning()
 {
     std::lock_guard<std::mutex> lock(mtx_);
+    reapEndedPlayer();
     return isRunning();
 }
 
 pid_t Watchdog::getPlayerPid()
 {
     std::lock_guard<std::mutex> lock(mtx_);
-    return isRunning() ? player_pid_ : -1;
+    reapEndedPlayer();
+    return player_pid_;
 }
 
 std::chrono::seconds Watchdog::restartDelay(int crash_count)
@@ -202,7 +205,7 @@ void Watchdog::start()
     player_pid_     = pid;
     started_at_     = std::chrono::steady_clock::now();
     last_heartbeat_ = started_at_; // the startup time counts like a heartbeat
-    if (!player_missing_)          // otherwise logged in isRunning(), when the player is found
+    if (!player_missing_)          // otherwise logged in reapEndedPlayer(), when the player is found
         logInfo("Started {} with pid {}: {}", player_name_, pid, player_command_);
 }
 
@@ -236,24 +239,25 @@ void Watchdog::stop()
 }
 
 /**
- * Checks without blocking whether the player has ended. An ended player
- * is reaped, so no zombie process is left.
+ * Checks without blocking whether the player has ended. An ended player is reaped,
+ * so no zombie process is left, and counts as crash (see playerEnded()),
+ * except a missing player. Afterwards isRunning() tells whether the player still runs.
  */
-bool Watchdog::isRunning()
+void Watchdog::reapEndedPlayer()
 {
-    if (player_pid_ < 0)
-        return false;
+    if (!isRunning())
+        return;
 
     int status   = 0;
     pid_t result = waitpid(player_pid_, &status, WNOHANG);
-    if (result == 0)
+    if (result == 0) // still running
     {
         if (player_missing_)
         {
             player_missing_ = false;
             logInfo("Found {}, started with pid {}: {}", player_name_, player_pid_, player_command_);
         }
-        return true;
+        return;
     }
 
     // 127: the shell did not find the command, see "Missing player" in watchdog.hpp
@@ -264,7 +268,7 @@ bool Watchdog::isRunning()
         player_missing_ = true;
         kill(-player_pid_, SIGKILL);
         player_pid_ = -1;
-        return false;
+        return;
     }
 
     player_missing_ = false;
@@ -278,7 +282,11 @@ bool Watchdog::isRunning()
     kill(-player_pid_, SIGKILL); // processes of a start script that are still left
     player_pid_ = -1;
     playerEnded();
-    return false;
+}
+
+bool Watchdog::isRunning() const
+{
+    return player_pid_ >= 0;
 }
 
 bool Watchdog::isHanging() const

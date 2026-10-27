@@ -115,7 +115,8 @@ class Watchdog
         // The following methods expect that mtx is locked
         void start();
         void stop();
-        bool isRunning();
+        void reapEndedPlayer();
+        bool isRunning() const; // only the state, call reapEndedPlayer() before
         bool isHanging() const;
         void playerEnded();
         void rebootIfAllowed();
