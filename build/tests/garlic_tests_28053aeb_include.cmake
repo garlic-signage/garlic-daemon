@@ -1,0 +1,5 @@
+if(EXISTS "/home/niko/Source/github/garlic-daemon/build/tests/garlic_tests_28053aeb_tests.cmake")
+  include("/home/niko/Source/github/garlic-daemon/build/tests/garlic_tests_28053aeb_tests.cmake")
+else()
+  add_test(garlic-tests_NOT_BUILT garlic-tests_NOT_BUILT)
+endif()

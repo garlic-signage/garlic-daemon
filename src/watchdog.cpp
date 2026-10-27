@@ -192,7 +192,7 @@ void Watchdog::start()
             _exit(126);
 
         execve(argv[0], const_cast<char *const *>(argv), envp.data());
-        _exit(127); // only reached when execve() failed
+        _exit(EXIT_COMMAND_NOT_FOUND); // only reached when execve() failed
     }
 
     // Also set the process group here, otherwise a stop() right after the start could
@@ -202,7 +202,8 @@ void Watchdog::start()
     player_pid_     = pid;
     started_at_     = std::chrono::steady_clock::now();
     last_heartbeat_ = started_at_; // the startup time counts like a heartbeat
-    logInfo("Started {} with pid {}: {}", player_name_, pid, player_command_);
+    if (!player_missing_)          // otherwise logged in isRunning(), when the player is found
+        logInfo("Started {} with pid {}: {}", player_name_, pid, player_command_);
 }
 
 /**
@@ -246,8 +247,27 @@ bool Watchdog::isRunning()
     int status   = 0;
     pid_t result = waitpid(player_pid_, &status, WNOHANG);
     if (result == 0)
+    {
+        if (player_missing_)
+        {
+            player_missing_ = false;
+            logInfo("Found {}, started with pid {}: {}", player_name_, player_pid_, player_command_);
+        }
         return true;
+    }
 
+    // 127: the shell did not find the command, see "Missing player" in watchdog.hpp
+    if (result == player_pid_ && WIFEXITED(status) && WEXITSTATUS(status) == EXIT_COMMAND_NOT_FOUND)
+    {
+        if (!player_missing_)
+            logError("{} not found: {}, waiting for it.", player_name_, player_command_);
+        player_missing_ = true;
+        kill(-player_pid_, SIGKILL);
+        player_pid_ = -1;
+        return false;
+    }
+
+    player_missing_ = false;
     if (result == player_pid_)
     {
         if (WIFEXITED(status))

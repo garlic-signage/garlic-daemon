@@ -91,7 +91,8 @@ In both cases:
   The player should handle `SIGTERM` and end within 5 seconds.
 - **Exit**: when the player ends, the daemon starts it again, with a delay after repeated crashes
   (see README, sections Backoff and Reboot). An exit is always treated as crash,
-  there is no exit code for "do not restart".
+  there is no exit code for "do not restart". Only exit code 127 is special: it means
+  "player not found" and is no crash, so the player must not use it.
 
 ## USB sticks
 

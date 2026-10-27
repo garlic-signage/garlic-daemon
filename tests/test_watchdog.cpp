@@ -17,6 +17,9 @@
 *************************************************************************************/
 
 #include <gtest/gtest.h>
+#include <algorithm>
+#include <iterator>
+#include <sstream>
 #include <chrono>
 #include <csignal>
 #include <cstdlib>
@@ -128,6 +131,49 @@ TEST_F(WatchdogTest, MissingPlayerUserDoesNotStartPlayer)
     std::this_thread::sleep_for(100ms);
     EXPECT_FALSE(fs::exists(marker));
     EXPECT_EQ(system_actions.reboot_calls, 0); // a missing user is no crash
+}
+
+TEST_F(WatchdogTest, MissingPlayerIsNoCrashAndLoggedOnce)
+{
+    // "exit 127" like the shell for a command that does not exist, every start appends a line
+    fs::path starts_file = tmp_dir / "starts";
+    Watchdog watchdog(
+        makeConfiguration("command = \"echo x >> " + starts_file.string() + "; exit 127\"; reboot_after_crashes = 1;"),
+        system_actions);
+    std::ostringstream log;
+    std::streambuf *original = std::clog.rdbuf(log.rdbuf());
+
+    for (int i = 0; i < 3; i++)
+    {
+        watchdog.check(); // notices the missing player and starts again at once, no backoff
+        std::this_thread::sleep_for(100ms);
+    }
+    std::clog.rdbuf(original);
+
+    EXPECT_EQ(system_actions.reboot_calls, 0);
+    std::ifstream starts(starts_file);
+    EXPECT_EQ(std::count(std::istreambuf_iterator<char>(starts), {}, '\n'), 3);
+    std::string text = log.str();
+    EXPECT_EQ(text.find("not found"), text.rfind("not found")); // only once
+    EXPECT_NE(text.find("not found"), std::string::npos);
+    EXPECT_EQ(text.find("Started"), text.rfind("Started")); // only the first start, not the retries
+}
+
+TEST_F(WatchdogTest, PlayerInstalledLaterIsStarted)
+{
+    fs::path installed = tmp_dir / "installed";
+    Watchdog watchdog(makeConfiguration("command = \"test -e " + installed.string() + " || exit 127; exec sleep 30\";"),
+                      system_actions);
+    watchdog.check();
+    std::this_thread::sleep_for(100ms);
+    watchdog.check(); // player missing
+    std::this_thread::sleep_for(100ms);
+
+    std::ofstream(installed).put('x');
+    watchdog.check(); // notices the missing player again and starts it
+    watchdog.check(); // the player runs
+
+    EXPECT_TRUE(watchdog.isPlayerRunning());
 }
 
 TEST_F(WatchdogTest, CheckDoesNotStartSecondPlayer)

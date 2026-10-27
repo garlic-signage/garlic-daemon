@@ -1,0 +1,19 @@
+# Template, CMake replaces the  paths during configuration
+[Unit]
+Description=garlic-daemon: system functions and watchdog for the garlic-player
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/garlic-daemon --config /usr/local/etc/garlic-daemon/garlic-daemon.conf
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+User=root
+SyslogIdentifier=garlic-daemon
+# Creates /var/lib/garlic-daemon (state_dir in the config)
+StateDirectory=garlic-daemon
+# Creates /run/garlic-daemon for the socket
+RuntimeDirectory=garlic-daemon
+
+[Install]
+WantedBy=multi-user.target

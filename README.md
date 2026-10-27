@@ -38,6 +38,7 @@ The watchdog checks the player every 5 seconds:
 | Player is not running (first start) | | start |
 | Player has ended (crash, `kill`, exit) | `waitpid()`, the player is a child process | restart, see Backoff |
 | Player hangs | no `heartbeat` message for `Player.heartbeat_timeout` seconds | stop, restart, see Backoff |
+| Player is missing | exit code 127, the shell did not find `Player.command` | log once, try again every 5 seconds, no backoff, no reboot |
 
 **Hang detection** needs the player: it has to send the message `heartbeat` regularly.
 Send it from a timer in the GUI thread (e.g. a `QTimer` every 10 seconds), not from an extra thread,
@@ -61,6 +62,8 @@ within 60 seconds after the start. The next start is delayed:
 - A player that ran longer than 60 seconds resets the counter and is restarted without delay.
 - Because the watchdog checks every 5 seconds, a crash is noticed up to 5 seconds later.
 - A stop on purpose (e.g. for an update) is no crash, the next start comes without delay.
+- A missing player (exit code 127) is no crash. A player installed later starts within 5 seconds.
+  A start script should start the player with `exec`, so a missing player binary also ends with 127.
 
 ### Reboot
 
@@ -122,6 +125,8 @@ e.g. only warnings and errors: `journalctl -u garlic-daemon -p warning`
 |---|---|
 | `Started garlic-player with pid …` | player started |
 | `User … does not exist, cannot start garlic-player` | `Player.user` is missing on the system, the player is not started |
+| `garlic-player not found: …, waiting for it.` | `Player.command` does not exist (exit code 127), logged once |
+| `Found garlic-player, started with pid …` | the missing player exists now and runs |
 | `garlic-player exited with code …` / `was killed by signal …` | player has ended |
 | `garlic-player sent no heartbeat for … seconds, restart it.` | hang detected |
 | `garlic-player crashed … times in a row, next start in … seconds.` | backoff |

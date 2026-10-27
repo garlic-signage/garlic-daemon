@@ -45,6 +45,11 @@
  * REBOOT_INTERVAL. The time of the last reboot is stored in <state_dir>/last_reboot,
  * so it survives the reboot. If the file cannot be written, there is no reboot.
  *
+ * Missing player: exit code 127 means the shell did not find the command, e.g. the
+ * player is not installed yet. This is no crash, so there is no backoff and no reboot.
+ * It is logged once, then the watchdog tries again with every check() without logging,
+ * so a player installed later starts by itself.
+ *
  * The player gets its own process group, so stopping it also stops
  * all processes a start script has started.
  */
@@ -86,6 +91,8 @@ class Watchdog
         static constexpr auto BACKOFF_MAX     = std::chrono::seconds(300);
         static constexpr auto REBOOT_INTERVAL = std::chrono::hours(6);
 
+        static constexpr int EXIT_COMMAND_NOT_FOUND = 127; // exit code of the shell
+
         std::string player_name_;
         std::string player_command_;
         std::string player_user_;
@@ -102,7 +109,8 @@ class Watchdog
         std::chrono::steady_clock::time_point last_heartbeat_;
         std::chrono::steady_clock::time_point started_at_;
         std::chrono::steady_clock::time_point next_start_; // backoff: no start before this time
-        int crash_count_ = 0;                              // crashes in a row
+        int crash_count_     = 0;                          // crashes in a row
+        bool player_missing_ = false;                      // last start ended with 127, see above
 
         // The following methods expect that mtx is locked
         void start();

@@ -1,0 +1,581 @@
+{
+  "tests": 103,
+  "name": "AllTests",
+  "testsuites": [
+    {
+      "name": "CmdParser",
+      "tests": 10,
+      "testsuite": [
+        {
+          "name": "NoArguments",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_cmd_parser.cpp",
+          "line": 36
+        },
+        {
+          "name": "OptionWithValue",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_cmd_parser.cpp",
+          "line": 45
+        },
+        {
+          "name": "SeveralOptions",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_cmd_parser.cpp",
+          "line": 54
+        },
+        {
+          "name": "OptionsWithoutValue",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_cmd_parser.cpp",
+          "line": 67
+        },
+        {
+          "name": "LastValueWins",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_cmd_parser.cpp",
+          "line": 77
+        },
+        {
+          "name": "MissingValueIsError",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_cmd_parser.cpp",
+          "line": 84
+        },
+        {
+          "name": "UnknownOptionIsError",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_cmd_parser.cpp",
+          "line": 91
+        },
+        {
+          "name": "ArgumentWithoutOptionIsError",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_cmd_parser.cpp",
+          "line": 98
+        },
+        {
+          "name": "ProgramNameIsNotParsed",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_cmd_parser.cpp",
+          "line": 105
+        },
+        {
+          "name": "HelpTextListsAllOptions",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_cmd_parser.cpp",
+          "line": 116
+        }
+      ]
+    },
+    {
+      "name": "Configuration",
+      "tests": 11,
+      "testsuite": [
+        {
+          "name": "DefaultValues",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_configuration.cpp",
+          "line": 46
+        },
+        {
+          "name": "ReadsAllValues",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_configuration.cpp",
+          "line": 58
+        },
+        {
+          "name": "MissingPlayerGroupKeepsPlayerDefaults",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_configuration.cpp",
+          "line": 89
+        },
+        {
+          "name": "MissingSingleValueKeepsDefault",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_configuration.cpp",
+          "line": 97
+        },
+        {
+          "name": "ShippedConfigFileIsValid",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_configuration.cpp",
+          "line": 108
+        },
+        {
+          "name": "EnvironmentEntryWithoutNameOrValueThrows",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_configuration.cpp",
+          "line": 141
+        },
+        {
+          "name": "EnvironmentEntryWithEmptyValueIsAllowed",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_configuration.cpp",
+          "line": 152
+        },
+        {
+          "name": "CommandLineOverridesConfigFile",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_configuration.cpp",
+          "line": 159
+        },
+        {
+          "name": "CommandLineWithoutOptionsKeepsValues",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_configuration.cpp",
+          "line": 179
+        },
+        {
+          "name": "HeartbeatTimeoutZeroIsAllowed",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_configuration.cpp",
+          "line": 189
+        },
+        {
+          "name": "InvalidHeartbeatTimeoutThrows",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_configuration.cpp",
+          "line": 198
+        }
+      ]
+    },
+    {
+      "name": "DaemonTest",
+      "tests": 6,
+      "testsuite": [
+        {
+          "name": "ReceivedMessageIsDispatched",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_daemon.cpp",
+          "line": 78
+        },
+        {
+          "name": "SeveralMessagesAreDispatched",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_daemon.cpp",
+          "line": 88
+        },
+        {
+          "name": "NoMessagesAreDispatchedAfterStop",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_daemon.cpp",
+          "line": 100
+        },
+        {
+          "name": "StopEndsAllThreadsQuickly",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_daemon.cpp",
+          "line": 112
+        },
+        {
+          "name": "StopWithoutStartIsHarmless",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_daemon.cpp",
+          "line": 126
+        },
+        {
+          "name": "SighupReloadsAndSigtermStops",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_daemon.cpp",
+          "line": 133
+        }
+      ]
+    },
+    {
+      "name": "LocalSocketServerTest",
+      "tests": 17,
+      "testsuite": [
+        {
+          "name": "ThrowsWhenSocketCannotBeCreated",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_local_socket_server.cpp",
+          "line": 96
+        },
+        {
+          "name": "ThrowsWhenSocketPathIsTooLong",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_local_socket_server.cpp",
+          "line": 101
+        },
+        {
+          "name": "SocketFileIsCreatedAndRemoved",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_local_socket_server.cpp",
+          "line": 109
+        },
+        {
+          "name": "OldSocketFileIsReplaced",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_local_socket_server.cpp",
+          "line": 118
+        },
+        {
+          "name": "PollingEmptyQueueReturnsFalse",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_local_socket_server.cpp",
+          "line": 130
+        },
+        {
+          "name": "ReceivesLine",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_local_socket_server.cpp",
+          "line": 138
+        },
+        {
+          "name": "SeveralLinesInOneWriteKeepOrder",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_local_socket_server.cpp",
+          "line": 150
+        },
+        {
+          "name": "LineSplitOverSeveralWrites",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_local_socket_server.cpp",
+          "line": 166
+        },
+        {
+          "name": "CarriageReturnAndEmptyLinesAreIgnored",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_local_socket_server.cpp",
+          "line": 181
+        },
+        {
+          "name": "LineWithoutNewlineIsNotReceived",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_local_socket_server.cpp",
+          "line": 195
+        },
+        {
+          "name": "TooLongLineClosesConnection",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_local_socket_server.cpp",
+          "line": 207
+        },
+        {
+          "name": "OtherUserIsRejected",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_local_socket_server.cpp",
+          "line": 218
+        },
+        {
+          "name": "SendReachesAllClients",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_local_socket_server.cpp",
+          "line": 236
+        },
+        {
+          "name": "ClientCanReconnect",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_local_socket_server.cpp",
+          "line": 250
+        },
+        {
+          "name": "StopWakesUpWaitForMessage",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_local_socket_server.cpp",
+          "line": 268
+        },
+        {
+          "name": "WaitForMessageAfterStopIgnoresQueuedMessages",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_local_socket_server.cpp",
+          "line": 284
+        },
+        {
+          "name": "StopRightAfterStartIsSafe",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_local_socket_server.cpp",
+          "line": 297
+        }
+      ]
+    },
+    {
+      "name": "LogTest",
+      "tests": 5,
+      "testsuite": [
+        {
+          "name": "InfoHasPriority6WithoutLocation",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_log.cpp",
+          "line": 37
+        },
+        {
+          "name": "WarningHasPriority4WithLocation",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_log.cpp",
+          "line": 44
+        },
+        {
+          "name": "ErrorHasPriority3WithLocation",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_log.cpp",
+          "line": 52
+        },
+        {
+          "name": "DebugHasPriority7WithLocation",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_log.cpp",
+          "line": 60
+        },
+        {
+          "name": "EveryCallIsOneLine",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_log.cpp",
+          "line": 68
+        }
+      ]
+    },
+    {
+      "name": "MessageDispatcher",
+      "tests": 4,
+      "testsuite": [
+        {
+          "name": "RebootMessageCallsReboot",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_message_dispatcher.cpp",
+          "line": 27
+        },
+        {
+          "name": "InstallAndRemoveAppDoNotReboot",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_message_dispatcher.cpp",
+          "line": 38
+        },
+        {
+          "name": "UnknownMessagesDoNotReboot",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_message_dispatcher.cpp",
+          "line": 50
+        },
+        {
+          "name": "HeartbeatMessageResetsWatchdogTimeout",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_message_dispatcher.cpp",
+          "line": 64
+        }
+      ]
+    },
+    {
+      "name": "UsbContentHandlerTest",
+      "tests": 9,
+      "testsuite": [
+        {
+          "name": "EmptyStickDoesNothing",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_usb_content_handler.cpp",
+          "line": 55
+        },
+        {
+          "name": "ConfigXmlIsApplied",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_usb_content_handler.cpp",
+          "line": 62
+        },
+        {
+          "name": "FirmwareUpdatesPlayer",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_usb_content_handler.cpp",
+          "line": 71
+        },
+        {
+          "name": "FirmwareFileNameFromConfiguration",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_usb_content_handler.cpp",
+          "line": 80
+        },
+        {
+          "name": "SmilIndexIsPlayed",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_usb_content_handler.cpp",
+          "line": 94
+        },
+        {
+          "name": "IndexSmilInRootIsIgnored",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_usb_content_handler.cpp",
+          "line": 103
+        },
+        {
+          "name": "AllFilesInFixedOrder",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_usb_content_handler.cpp",
+          "line": 112
+        },
+        {
+          "name": "DirectoryWithFileNameIsIgnored",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_usb_content_handler.cpp",
+          "line": 125
+        },
+        {
+          "name": "SymlinksAreIgnored",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_usb_content_handler.cpp",
+          "line": 134
+        }
+      ]
+    },
+    {
+      "name": "UsbMonitorTest",
+      "tests": 16,
+      "testsuite": [
+        {
+          "name": "AddedDeviceIsMountedAndHandled",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_usb_monitor.cpp",
+          "line": 51
+        },
+        {
+          "name": "MountPointIsCreated",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_usb_monitor.cpp",
+          "line": 68
+        },
+        {
+          "name": "SameDeviceIsMountedOnlyOnce",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_usb_monitor.cpp",
+          "line": 78
+        },
+        {
+          "name": "UnsupportedFilesystemIsNotMounted",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_usb_monitor.cpp",
+          "line": 89
+        },
+        {
+          "name": "FailedMountIsNotHandled",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_usb_monitor.cpp",
+          "line": 101
+        },
+        {
+          "name": "FailedMountRemovesMountPoint",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_usb_monitor.cpp",
+          "line": 114
+        },
+        {
+          "name": "RemovedDeviceIsUnmounted",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_usb_monitor.cpp",
+          "line": 125
+        },
+        {
+          "name": "UnknownDeviceIsNotUnmounted",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_usb_monitor.cpp",
+          "line": 137
+        },
+        {
+          "name": "DestructorUnmountsAll",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_usb_monitor.cpp",
+          "line": 147
+        },
+        {
+          "name": "AddedUsbPartitionIsMounted",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_usb_monitor.cpp",
+          "line": 163
+        },
+        {
+          "name": "AlreadyPluggedInDeviceWithoutActionIsMounted",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_usb_monitor.cpp",
+          "line": 175
+        },
+        {
+          "name": "DeviceNotOnUsbIsNotMounted",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_usb_monitor.cpp",
+          "line": 187
+        },
+        {
+          "name": "DeviceWithoutFilesystemIsNotMounted",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_usb_monitor.cpp",
+          "line": 199
+        },
+        {
+          "name": "DeviceWithoutNodeIsIgnored",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_usb_monitor.cpp",
+          "line": 215
+        },
+        {
+          "name": "OtherActionsAreIgnored",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_usb_monitor.cpp",
+          "line": 227
+        },
+        {
+          "name": "RemoveActionUnmounts",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_usb_monitor.cpp",
+          "line": 243
+        }
+      ]
+    },
+    {
+      "name": "WatchdogTest",
+      "tests": 24,
+      "testsuite": [
+        {
+          "name": "CheckStartsPlayer",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_watchdog.cpp",
+          "line": 101
+        },
+        {
+          "name": "MissingPlayerUserDoesNotStartPlayer",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_watchdog.cpp",
+          "line": 112
+        },
+        {
+          "name": "MissingPlayerIsNoCrashAndLoggedOnce",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_watchdog.cpp",
+          "line": 136
+        },
+        {
+          "name": "PlayerInstalledLaterIsStarted",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_watchdog.cpp",
+          "line": 162
+        },
+        {
+          "name": "CheckDoesNotStartSecondPlayer",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_watchdog.cpp",
+          "line": 179
+        },
+        {
+          "name": "CrashedPlayerIsRestartedAfterBackoff",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_watchdog.cpp",
+          "line": 190
+        },
+        {
+          "name": "HangingPlayerIsStopped",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_watchdog.cpp",
+          "line": 210
+        },
+        {
+          "name": "StoppedPlayerIsStartedWithoutDelay",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_watchdog.cpp",
+          "line": 224
+        },
+        {
+          "name": "PlayerRunningLongEnoughResetsCrashCount",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_watchdog.cpp",
+          "line": 235
+        },
+        {
+          "name": "HeartbeatKeepsPlayerRunning",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_watchdog.cpp",
+          "line": 269
+        },
+        {
+          "name": "NoHeartbeatTimeoutMeansNoHangDetection",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_watchdog.cpp",
+          "line": 285
+        },
+        {
+          "name": "InactiveWatchdogDoesNotStartPlayer",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_watchdog.cpp",
+          "line": 297
+        },
+        {
+          "name": "StopPlayerStopsAllProcessesOfStartScript",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_watchdog.cpp",
+          "line": 307
+        },
+        {
+          "name": "PlayerIgnoringSigtermIsKilled",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_watchdog.cpp",
+          "line": 324
+        },
+        {
+          "name": "DestructorStopsPlayer",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_watchdog.cpp",
+          "line": 342
+        },
+        {
+          "name": "EnvironmentFromConfigurationIsPassed",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_watchdog.cpp",
+          "line": 354
+        },
+        {
+          "name": "EnvironmentFromConfigurationReplacesVariableWithSameName",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_watchdog.cpp",
+          "line": 365
+        },
+        {
+          "name": "CrashLoopRebootsAndStoresTime",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_watchdog.cpp",
+          "line": 377
+        },
+        {
+          "name": "NoRebootBeforeCrashLimit",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_watchdog.cpp",
+          "line": 390
+        },
+        {
+          "name": "NoRebootWhenDisabled",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_watchdog.cpp",
+          "line": 399
+        },
+        {
+          "name": "NoSecondRebootWithinInterval",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_watchdog.cpp",
+          "line": 408
+        },
+        {
+          "name": "RebootAgainAfterInterval",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_watchdog.cpp",
+          "line": 418
+        },
+        {
+          "name": "NoRebootWhenClockWentBack",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_watchdog.cpp",
+          "line": 428
+        },
+        {
+          "name": "NoRebootWhenTimeCannotBeStored",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_watchdog.cpp",
+          "line": 438
+        }
+      ]
+    },
+    {
+      "name": "Watchdog",
+      "tests": 1,
+      "testsuite": [
+        {
+          "name": "RestartDelayDoublesUpToMaximum",
+          "file": "\/home\/niko\/Source\/github\/garlic-daemon\/tests\/test_watchdog.cpp",
+          "line": 256
+        }
+      ]
+    }
+  ]
+}
