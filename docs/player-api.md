@@ -45,7 +45,7 @@ The player should try again every few seconds. Messages sent while there is no c
 | Message | Action |
 |---|---|
 | `heartbeat` | the player is alive, resets the hang detection (see below) |
-| `reboot` | the daemon reboots the system with `systemctl reboot`, so the player gets `SIGTERM` first |
+| `reboot` | the daemon reboots the system with `systemctl --no-block reboot`, so the player gets `SIGTERM` first. Only as root |
 | `install_app` | not implemented yet |
 | `remove_app` | not implemented yet |
 
@@ -83,6 +83,7 @@ The daemon normally runs as root (systemd unit). Then:
 
 When the daemon runs as normal user (e.g. during development), the player runs as the same user,
 gets the environment of the daemon plus `Player.environment`, and the working directory `/`.
+The message `reboot` and the watchdog then do not reboot, the daemon only logs a warning.
 
 In both cases:
 

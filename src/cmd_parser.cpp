@@ -40,7 +40,8 @@ constexpr auto OPTIONS = std::to_array<Option>({
     {"--heartbeat-timeout", "<seconds>",
      "restart the player without heartbeat, 0 = off (config: Player.heartbeat_timeout)"},
     {"--state-dir", "<dir>", "directory for files that survive a reboot (config: state_dir)"},
-    {"--usb-mount-dir", "<dir>", "USB sticks are mounted below this directory (config: Usb.mount_dir)"},
+    {"--usb-mount-dir", "<dir>",
+     "USB sticks are mounted below this directory, it belongs to the daemon alone (config: Usb.mount_dir)"},
     {"--help", "", "show this help and exit"},
     {"--version", "", "show the version and exit"},
 });
