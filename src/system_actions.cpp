@@ -35,7 +35,8 @@ void SystemActions::reboot()
         return;
     }
 
-    if (std::system("systemctl reboot") == 0)
+    // --no-block: only starts the reboot and does not wait, systemd then stops this daemon too
+    if (std::system("systemctl --no-block reboot") == 0)
         return;
 
     logError("systemctl reboot failed, reboot without clean shutdown.");

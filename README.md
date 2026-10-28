@@ -84,7 +84,7 @@ a reboot loop. Therefore:
   in the future. Then there is no reboot either.
 - `reboot_after_crashes = 0` disables the reboot.
 
-The reboot runs with `systemctl reboot`, so all services stop cleanly, also the daemon and the player.
+The reboot runs with `systemctl --no-block reboot`, so all services stop cleanly, also the daemon and the player.
 Only if that fails, the daemon writes the buffers to disk and reboots at once.
 
 The systemd unit creates `/var/lib/garlic-daemon` with `StateDirectory=`.

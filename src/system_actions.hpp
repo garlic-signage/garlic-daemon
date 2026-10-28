@@ -32,7 +32,7 @@ class SystemActions
     public:
         virtual ~SystemActions() = default;
 
-        /// Reboots with "systemctl reboot", so all services (also the daemon and the player) stop cleanly.
+        /// Reboots with "systemctl --no-block reboot", so all services (also the daemon and the player) stop cleanly.
         /// Only if that fails: writes all buffers to disk and reboots at once.
         /// Only as root, as normal user it only logs a warning.
         virtual void reboot();
