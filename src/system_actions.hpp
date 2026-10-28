@@ -34,6 +34,7 @@ class SystemActions
 
         /// Reboots with "systemctl reboot", so all services (also the daemon and the player) stop cleanly.
         /// Only if that fails: writes all buffers to disk and reboots at once.
+        /// Only as root, as normal user it only logs a warning.
         virtual void reboot();
 
         /// Mounts device read-only to mount_point (nosuid, nodev, noexec). Returns false on error.

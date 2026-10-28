@@ -28,6 +28,13 @@
 
 void SystemActions::reboot()
 {
+    // As normal user, e.g. during development, systemctl could reboot the own machine via polkit
+    if (getuid() != 0)
+    {
+        logWarning("No reboot, the daemon does not run as root.");
+        return;
+    }
+
     if (std::system("systemctl reboot") == 0)
         return;
 

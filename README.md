@@ -140,6 +140,7 @@ e.g. only warnings and errors: `journalctl -u garlic-daemon -p warning`
 | `No reboot, the watchdog already rebooted within the last 6 hours.` | reboot skipped |
 | `No reboot, cannot write …` | reboot skipped, check `state_dir` |
 | `systemctl reboot failed, reboot without clean shutdown.` | e.g. no systemd, the daemon reboots at once |
+| `No reboot, the daemon does not run as root.` | reboot skipped, e.g. test run as normal user |
 | `garlic-player does not stop, send SIGKILL.` | player ignored SIGTERM |
 | `Mounted USB device … to …` / `Unmounted USB device …` | USB stick plugged in / removed |
 | `USB device … has unsupported filesystem …` | stick not mounted, e.g. encrypted or swap |
@@ -207,7 +208,7 @@ An invalid file ends the daemon with an error message.
 |---|---|---|
 | `socket` | `"/run/garlic-daemon/garlic-daemon.sock"` | Unix socket for the player, see [docs/player-api.md](docs/player-api.md) |
 | `state_dir` | `"/var/lib/garlic-daemon"` | directory for files that must survive a reboot |
-| `Usb.mount_dir` | `"/media/garlic"` | USB sticks are mounted to `<mount_dir>/<device>` |
+| `Usb.mount_dir` | `"/media/garlic"` | USB sticks are mounted to `<mount_dir>/<device>`. The directory belongs to the daemon alone: at its start it unmounts and deletes the directories in it, so do not use e.g. `/mnt` or `/tmp` |
 | `Usb.firmware_file` | `"garlic-player.AppImage"` | file name of a player update on the stick |
 | `Player.name` | `"garlic-player"` | name in log messages |
 | `Player.command` | `"/opt/garlic-player/garlic.sh"` | start command, run with `/bin/sh -c` |
@@ -233,7 +234,7 @@ garlic-daemon [options]
 | `--player-command <command>` | command that starts the player (config: `Player.command`) |
 | `--heartbeat-timeout <seconds>` | restart the player without heartbeat, `0` = off (config: `Player.heartbeat_timeout`) |
 | `--state-dir <dir>` | directory for files that survive a reboot (config: `state_dir`) |
-| `--usb-mount-dir <dir>` | USB sticks are mounted below this directory (config: `Usb.mount_dir`) |
+| `--usb-mount-dir <dir>` | USB sticks are mounted below this directory, it belongs to the daemon alone (config: `Usb.mount_dir`) |
 | `--help` | show the options and exit |
 | `--version` | show the version and exit |
 
@@ -249,7 +250,7 @@ garlic-daemon --socket /tmp/garlic.sock --player-command "sleep 1000" \
 echo heartbeat | socat - UNIX-CONNECT:/tmp/garlic.sock
 ```
 
-As normal user the daemon cannot mount USB sticks or reboot, it logs an error instead.
+As normal user the daemon does not reboot and cannot mount USB sticks, it logs a warning or error instead.
 
 ## Player API
 
