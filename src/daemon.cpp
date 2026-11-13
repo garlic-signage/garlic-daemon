@@ -35,9 +35,8 @@ sigset_t daemonSignals()
 }
 } // namespace
 
-Daemon::Daemon(Watchdog &watchdog, LocalSocketServer &socket_server, MessageDispatcher &dispatcher,
-               UsbMonitor &usb_monitor)
-    : watchdog_(watchdog), socket_server_(socket_server), dispatcher_(dispatcher), usb_monitor_(usb_monitor)
+Daemon::Daemon(Watchdog &watchdog, LocalSocketServer &socket_server, PlayerProtocol &protocol, UsbMonitor &usb_monitor)
+    : watchdog_(watchdog), socket_server_(socket_server), protocol_(protocol), usb_monitor_(usb_monitor)
 {
 }
 
@@ -116,13 +115,8 @@ void Daemon::loopWatchdog(std::stop_token stop_token)
 
 void Daemon::loopMessageListener()
 {
-    std::string message;
+    LocalSocketServer::Message message;
     while (socket_server_.waitForMessage(message))
-    {
-        if (message != "heartbeat") // comes every few seconds and would flood the log
-            logInfo("Received message: {}", message);
-
-        dispatcher_.dispatch(message);
-    }
+        protocol_.handle(message);
     logInfo("Finish message listener thread.");
 }

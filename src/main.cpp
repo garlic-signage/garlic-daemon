@@ -25,6 +25,7 @@
 #include "local_socket_server.hpp"
 #include "log.hpp"
 #include "message_dispatcher.hpp"
+#include "player_protocol.hpp"
 #include "usb_actions.hpp"
 #include "usb_content_handler.hpp"
 #include "usb_monitor.hpp"
@@ -90,13 +91,15 @@ int main(int argc, char **argv)
         SystemActions system_actions;
         Watchdog watchdog(configuration, system_actions);
         LocalSocketServer socket_server(configuration.getSocketPath(), playerUid(configuration));
-        MessageDispatcher dispatcher(system_actions, watchdog);
+        MessageDispatcher dispatcher(system_actions, watchdog); // the text protocol of before
+        PlayerProtocol protocol(socket_server, dispatcher, system_actions, watchdog,
+                                configuration.getHeartbeatTimeout(), GARLIC_DAEMON_VERSION);
 
         UsbActions usb_actions; // stub, see usb_actions.hpp
         UsbContentHandler usb_content_handler(configuration, usb_actions);
         UsbMonitor usb_monitor(configuration, system_actions, usb_content_handler);
 
-        Daemon daemon(watchdog, socket_server, dispatcher, usb_monitor);
+        Daemon daemon(watchdog, socket_server, protocol, usb_monitor);
         daemon.start();
         daemon.waitForTerminationSignal(); // blocks until SIGINT or SIGTERM
 

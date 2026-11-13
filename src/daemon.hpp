@@ -25,13 +25,13 @@
 #include <thread>
 #include "watchdog.hpp"
 #include "local_socket_server.hpp"
-#include "message_dispatcher.hpp"
+#include "player_protocol.hpp"
 #include "usb_monitor.hpp"
 
 /**
  * Runs the daemon with three threads:
  *  - watchdog: checks the player periodically
- *  - listener: passes messages from the socket to the dispatcher
+ *  - listener: passes messages from the socket to the protocol (PlayerProtocol)
  *  - usb: mounts USB sticks and handles their content
  *
  * Signals are not handled with a signal handler. Instead blockSignals()
@@ -41,8 +41,7 @@
 class Daemon
 {
     public:
-        Daemon(Watchdog &watchdog, LocalSocketServer &socket_server, MessageDispatcher &dispatcher,
-               UsbMonitor &usb_monitor);
+        Daemon(Watchdog &watchdog, LocalSocketServer &socket_server, PlayerProtocol &protocol, UsbMonitor &usb_monitor);
         ~Daemon();
 
         /// Starts the socket server and the three threads.
@@ -66,7 +65,7 @@ class Daemon
 
         Watchdog &watchdog_;
         LocalSocketServer &socket_server_;
-        MessageDispatcher &dispatcher_;
+        PlayerProtocol &protocol_;
         UsbMonitor &usb_monitor_;
 
         std::mutex watchdog_mutex_;

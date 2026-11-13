@@ -73,7 +73,7 @@ void LocalSocketServer::stop()
     server_thread_.request_stop();
 }
 
-bool LocalSocketServer::waitForMessage(std::string &message)
+bool LocalSocketServer::waitForMessage(Message &message)
 {
     std::unique_lock<std::mutex> lock(mtx_);
     std::stop_token stop_token = server_thread_.get_stop_token();
@@ -88,16 +88,49 @@ bool LocalSocketServer::waitForMessage(std::string &message)
     return true;
 }
 
+bool LocalSocketServer::waitForMessage(std::string &message)
+{
+    Message next;
+    while (waitForMessage(next))
+    {
+        if (next.closed)
+            continue;
+        message = next.text;
+        return true;
+    }
+    return false;
+}
+
 void LocalSocketServer::send(const std::string &message)
 {
     std::string line = message + "\n";
     std::lock_guard<std::mutex> lock(clients_mtx_);
     for (const Client &client : clients_)
-    {
-        // MSG_NOSIGNAL: no SIGPIPE when the client is gone, the server thread removes it then
-        if (::send(client.fd.get(), line.data(), line.size(), MSG_NOSIGNAL | MSG_DONTWAIT) < 0)
-            logWarning("Cannot send to client: {}", std::system_category().message(errno));
-    }
+        write(client, line);
+}
+
+void LocalSocketServer::sendTo(int client_id, const std::string &message)
+{
+    std::lock_guard<std::mutex> lock(clients_mtx_);
+    auto client = std::ranges::find(clients_, client_id, &Client::id);
+    if (client != clients_.end())
+        write(*client, message + "\n");
+}
+
+/// shutdown() ends the connection; the server thread sees it at its next poll() and removes the client.
+void LocalSocketServer::disconnect(int client_id)
+{
+    std::lock_guard<std::mutex> lock(clients_mtx_);
+    auto client = std::ranges::find(clients_, client_id, &Client::id);
+    if (client != clients_.end())
+        shutdown(client->fd.get(), SHUT_RDWR);
+}
+
+void LocalSocketServer::write(const Client &client, const std::string &line)
+{
+    // MSG_NOSIGNAL: no SIGPIPE when the client is gone, the server thread removes it then
+    if (::send(client.fd.get(), line.data(), line.size(), MSG_NOSIGNAL | MSG_DONTWAIT) < 0)
+        logWarning("Cannot send to client: {}", std::system_category().message(errno));
 }
 
 /**
@@ -130,8 +163,10 @@ void LocalSocketServer::loop(std::stop_token stop_token)
             auto client = std::ranges::find(clients_, fds[i].fd, [](const Client &c) { return c.fd.get(); });
             if (client != clients_.end() && !readClient(*client))
             {
+                int id = client->id;
                 clients_.erase(client); // closes the connection
                 logInfo("Client disconnected.");
+                push({id, "", true});
             }
         }
     }
@@ -145,7 +180,7 @@ void LocalSocketServer::acceptClient()
         return; // a rejected connection closes itself
 
     std::lock_guard<std::mutex> lock(clients_mtx_);
-    clients_.push_back({std::move(fd), ""});
+    clients_.push_back({std::move(fd), next_client_id_++, ""});
     logInfo("Client connected.");
 }
 
@@ -171,7 +206,7 @@ bool LocalSocketServer::readClient(Client &client)
         if (line.ends_with('\r'))
             line.pop_back();
         if (!line.empty())
-            push(line);
+            push({client.id, line});
     }
 
     if (client.buffer.size() > MAX_LINE_LENGTH)
@@ -199,9 +234,9 @@ bool LocalSocketServer::isAllowed(int fd) const
     return false;
 }
 
-void LocalSocketServer::push(const std::string &message)
+void LocalSocketServer::push(Message message)
 {
     std::lock_guard<std::mutex> lock(mtx_);
-    queue_.push(message);
+    queue_.push(std::move(message));
     cv_.notify_one();
 }

@@ -55,6 +55,8 @@ void Watchdog::check()
         return;
 
     reapEndedPlayer();
+    if (closed_by_user_)
+        return;
     if (isRunning() && isHanging())
     {
         logWarning("{} sent no heartbeat for {} seconds, restart it.", player_name_, heartbeat_timeout_.count());
@@ -75,6 +77,19 @@ void Watchdog::heartbeat()
 {
     std::lock_guard<std::mutex> lock(mtx_);
     last_heartbeat_ = std::chrono::steady_clock::now();
+}
+
+void Watchdog::playerClosing(bool restart)
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    closing_ = restart ? Closing::restart : Closing::stay;
+}
+
+bool Watchdog::isClosedByUser()
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    reapEndedPlayer();
+    return closed_by_user_;
 }
 
 void Watchdog::setActivity(bool is_active)
@@ -203,6 +218,7 @@ void Watchdog::start()
     setpgid(pid, pid);
 
     player_pid_     = pid;
+    closing_        = Closing::none;
     started_at_     = std::chrono::steady_clock::now();
     last_heartbeat_ = started_at_; // the startup time counts like a heartbeat
     if (!player_missing_)          // otherwise logged in reapEndedPlayer(), when the player is found
@@ -274,6 +290,18 @@ void Watchdog::reapEndedPlayer()
     }
 
     player_missing_ = false;
+    if (closing_ != Closing::none) // announced: no crash
+    {
+        closed_by_user_ = (closing_ == Closing::stay);
+        closing_        = Closing::none;
+        crash_count_    = 0;
+        next_start_     = {};
+        if (closed_by_user_)
+            logInfo("{} was closed by the user, it is not started again until the daemon restarts.", player_name_);
+        else
+            logInfo("{} ended as announced, start it again.", player_name_);
+        return;
+    }
     if (has_status && WIFEXITED(status))
         logWarning("{} exited with code {}", player_name_, WEXITSTATUS(status));
     else if (has_status && WIFSIGNALED(status))

@@ -43,7 +43,10 @@ class FakeSystemActions : public SystemActions
         std::vector<std::string> unmount_calls;
         bool mount_result = true; // false simulates a failing mount
 
+        bool can_reboot = true; // false: like a daemon that does not run as root
+
         void reboot() override { reboot_calls++; }
+        bool canReboot() override { return can_reboot; }
 
         bool mount(const std::string &device, const std::string &mount_point, const std::string &fs_type) override
         {

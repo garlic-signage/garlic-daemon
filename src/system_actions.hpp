@@ -37,6 +37,9 @@ class SystemActions
         /// Only as root, as normal user it only logs a warning.
         virtual void reboot();
 
+        /// Whether reboot() can reboot: only as root.
+        virtual bool canReboot();
+
         /// Mounts device read-only to mount_point (nosuid, nodev, noexec). Returns false on error.
         virtual bool mount(const std::string &device, const std::string &mount_point, const std::string &fs_type);
 

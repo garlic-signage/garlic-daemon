@@ -44,6 +44,11 @@ void SystemActions::reboot()
     ::reboot(RB_AUTOBOOT);
 }
 
+bool SystemActions::canReboot()
+{
+    return getuid() == 0;
+}
+
 bool SystemActions::mount(const std::string &device, const std::string &mount_point, const std::string &fs_type)
 {
     // Read-only, so pulling the stick without unmounting cannot damage it

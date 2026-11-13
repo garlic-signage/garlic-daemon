@@ -46,6 +46,8 @@ set(SOURCE_FILES
     src/usb_monitor.cpp
     src/local_socket_server.hpp
     src/local_socket_server.cpp
+    src/player_protocol.hpp
+    src/player_protocol.cpp
     src/log.hpp)
 
 add_library(garlic-core STATIC ${SOURCE_FILES})
@@ -53,7 +55,17 @@ target_include_directories(garlic-core PUBLIC src)
 # libudev reports plugged in USB sticks
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(UDEV REQUIRED IMPORTED_TARGET libudev)
-target_link_libraries(garlic-core PUBLIC libconfig++.so PkgConfig::UDEV)
+# nlohmann/json (header-only) for protocol 1: from the system (Arch: nlohmann-json, Debian: nlohmann-json3-dev),
+# otherwise downloaded
+find_package(nlohmann_json 3 QUIET)
+if (NOT nlohmann_json_FOUND)
+    include(FetchContent)
+    set(JSON_Install OFF CACHE BOOL "" FORCE)
+    FetchContent_Declare(nlohmann_json URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
+                         URL_HASH SHA256=d6c65aca6b1ed68e7a182f4757257b107ae403032760ed6ef121c9d55e81757d)
+    FetchContent_MakeAvailable(nlohmann_json)
+endif ()
+target_link_libraries(garlic-core PUBLIC libconfig++.so PkgConfig::UDEV nlohmann_json::nlohmann_json)
 
 # The daemon itself only consists of main.cpp
 add_executable(${THIS} src/main.cpp)

@@ -488,3 +488,57 @@ TEST_F(WatchdogTest, NoRebootWhenTimeCannotBeStored)
 
     EXPECT_EQ(system_actions.reboot_calls, 0);
 }
+
+TEST_F(WatchdogTest, AnnouncedEndIsNoCrashAndStartsAgainAtOnce)
+{
+    Watchdog watchdog(makeConfiguration("command = \"sleep 30\";"), system_actions);
+    watchdog.check();
+    pid_t pid = watchdog.getPlayerPid();
+    ASSERT_GT(pid, 0);
+
+    watchdog.playerClosing(true); // closing "quit" or "restart"
+    kill(pid, SIGTERM);
+    std::this_thread::sleep_for(100ms);
+    watchdog.check(); // no backoff: started again in the same check
+
+    EXPECT_FALSE(watchdog.isClosedByUser());
+    EXPECT_GT(watchdog.getPlayerPid(), 0);
+    EXPECT_NE(watchdog.getPlayerPid(), pid);
+}
+
+TEST_F(WatchdogTest, ClosedByTheUserIsNotStartedAgain)
+{
+    Watchdog watchdog(makeConfiguration("command = \"sleep 30\";"), system_actions);
+    watchdog.check();
+    pid_t pid = watchdog.getPlayerPid();
+    ASSERT_GT(pid, 0);
+
+    watchdog.playerClosing(false); // closing "user"
+    kill(pid, SIGTERM);
+    std::this_thread::sleep_for(100ms);
+    watchdog.check();
+
+    EXPECT_TRUE(watchdog.isClosedByUser());
+    EXPECT_EQ(watchdog.getPlayerPid(), -1);
+}
+
+TEST_F(WatchdogTest, ClosingIsForgottenWithTheNextStart)
+{
+    Watchdog watchdog(makeConfiguration("command = \"sleep 30\";"), system_actions);
+    watchdog.check();
+    watchdog.playerClosing(true);
+    pid_t pid = watchdog.getPlayerPid();
+    ASSERT_GT(pid, 0);
+    kill(pid, SIGTERM);
+    std::this_thread::sleep_for(100ms);
+    watchdog.check(); // announced end, started again
+
+    pid_t second = watchdog.getPlayerPid();
+    ASSERT_GT(second, 0);
+    kill(second, SIGKILL); // this end was not announced: a crash with backoff
+    std::this_thread::sleep_for(100ms);
+    watchdog.check();
+
+    EXPECT_FALSE(watchdog.isClosedByUser());
+    EXPECT_EQ(watchdog.getPlayerPid(), -1); // waits for the backoff
+}

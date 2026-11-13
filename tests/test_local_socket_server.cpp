@@ -287,3 +287,65 @@ TEST_F(LocalSocketServerTest, StopRightAfterStartIsSafe)
     // The destructor joins the thread, which needs at most one poll timeout
     EXPECT_LT(std::chrono::steady_clock::now() - begin, 1s);
 }
+
+TEST_F(LocalSocketServerTest, MessagesCarryTheirClientAndAClosedConnectionIsReported)
+{
+    LocalSocketServer server(socket_path, getuid());
+    server.start();
+    int first  = connectClient();
+    int second = connectClient();
+    write(first, "one\n");
+
+    LocalSocketServer::Message message;
+    ASSERT_TRUE(server.waitForMessage(message));
+    EXPECT_EQ(message.text, "one");
+    EXPECT_FALSE(message.closed);
+    int first_id = message.client;
+
+    write(second, "two\n");
+    ASSERT_TRUE(server.waitForMessage(message));
+    EXPECT_EQ(message.text, "two");
+    EXPECT_NE(message.client, first_id);
+
+    close(first);
+    std::erase(client_fds, first);
+    ASSERT_TRUE(server.waitForMessage(message));
+    EXPECT_TRUE(message.closed);
+    EXPECT_EQ(message.client, first_id);
+}
+
+TEST_F(LocalSocketServerTest, SendToReachesOnlyThatClient)
+{
+    LocalSocketServer server(socket_path, getuid());
+    server.start();
+    int first  = connectClient();
+    int second = connectClient();
+    write(first, "hello\n");
+    LocalSocketServer::Message message;
+    ASSERT_TRUE(server.waitForMessage(message));
+
+    server.sendTo(message.client, "only you");
+    EXPECT_EQ(read(first), "only you\n");
+
+    timeval short_timeout{0, 200000};
+    setsockopt(second, SOL_SOCKET, SO_RCVTIMEO, &short_timeout, sizeof(short_timeout));
+    char buffer[16];
+    EXPECT_LT(recv(second, buffer, sizeof(buffer), 0), 1);
+
+    server.sendTo(9999, "nobody"); // a client that is gone is no error
+}
+
+TEST_F(LocalSocketServerTest, DisconnectClosesTheConnection)
+{
+    LocalSocketServer server(socket_path, getuid());
+    server.start();
+    int fd = connectClient();
+    write(fd, "hello\n");
+    LocalSocketServer::Message message;
+    ASSERT_TRUE(server.waitForMessage(message));
+
+    server.disconnect(message.client);
+    ASSERT_TRUE(server.waitForMessage(message));
+    EXPECT_TRUE(message.closed);
+    EXPECT_EQ(read(fd), ""); // end of the connection
+}

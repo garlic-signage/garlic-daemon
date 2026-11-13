@@ -39,10 +39,11 @@
  * the user of a client (SO_PEERCRED), so the file permissions of the socket do
  * not matter: everybody may connect, but other users are disconnected at once.
  *
- * waitForMessage() returns the received lines one by one. It blocks until a line arrives
- * and returns false when the server was stopped. Call it only after start().
+ * waitForMessage() returns the received lines one by one, each with the id of its client, and an event
+ * (closed) when a client is gone. It blocks until something arrives and returns false when the server was
+ * stopped. Call it only after start().
  *
- * send() writes a line to all connected clients, e.g. to tell the player something.
+ * send() writes a line to all connected clients, sendTo() to one, e.g. the answer to a request.
  * All methods are thread safe. The destructor stops the thread and removes the socket file,
  * the file descriptors close themselves (FileDescriptor).
  */
@@ -54,23 +55,41 @@ class LocalSocketServer
         LocalSocketServer(const std::string &socket_path, uid_t allowed_uid);
         ~LocalSocketServer();
 
+        /// A received line of a client, or (closed) the end of its connection.
+        struct Message
+        {
+                int client = 0; // id, counted up from 1 per connection
+                std::string text;
+                bool closed = false;
+        };
+
         void start();
 
         /// Requests the stop and wakes up waitForMessage(). Calling it more than once is harmless.
         void stop();
 
+        bool waitForMessage(Message &message);
+
+        /// Only the lines, without client and closed connections.
         bool waitForMessage(std::string &message);
 
         /// Sends message + '\n' to all connected clients.
         void send(const std::string &message);
 
+        /// Sends message + '\n' to one client; a client that is gone is no error.
+        void sendTo(int client, const std::string &message);
+
+        /// Closes the connection of a client; its closed message follows.
+        void disconnect(int client);
+
     private:
         static constexpr int POLL_TIMEOUT_MS    = 200; // how often the thread checks whether it should stop
-        static constexpr size_t MAX_LINE_LENGTH = 8192;
+        static constexpr size_t MAX_LINE_LENGTH = 65536; // protocol 1: 64 KiB
 
         struct Client
         {
                 FileDescriptor fd;
+                int id = 0;
                 std::string buffer; // received data without a complete line yet
         };
 
@@ -80,9 +99,10 @@ class LocalSocketServer
 
         std::mutex clients_mtx_; // the server thread changes the clients, send() writes to them
         std::vector<Client> clients_;
+        int next_client_id_ = 1;
 
         std::mutex mtx_;
-        std::queue<std::string> queue_;
+        std::queue<Message> queue_;
         std::condition_variable_any cv_;
         std::jthread server_thread_; // last member, so it is destroyed first
 
@@ -90,7 +110,8 @@ class LocalSocketServer
         void acceptClient();
         bool readClient(Client &client);
         bool isAllowed(int fd) const;
-        void push(const std::string &message);
+        void push(Message message);
+        static void write(const Client &client, const std::string &line);
 };
 
 #endif // LOCAL_SOCKET_SERVER_HPP

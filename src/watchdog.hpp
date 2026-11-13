@@ -50,6 +50,10 @@
  * It is logged once, then the watchdog tries again with every check() without logging,
  * so a player installed later starts by itself.
  *
+ * Closing: a player that announces its end (protocol 1, closing) did not crash. After "user"
+ * (exit in the menu) it is not started again until the daemon restarts; after "quit" or
+ * "restart" it is started again at once, without backoff.
+ *
  * The player gets its own process group, so stopping it also stops
  * all processes a start script has started.
  */
@@ -68,6 +72,12 @@ class Watchdog
 
         /// The player is alive. Resets the hang detection.
         void heartbeat();
+
+        /// The player announced its end (closing): no crash. restart false: it stays closed, see Closing above.
+        void playerClosing(bool restart);
+
+        /// true after a closing without restart, until the daemon restarts.
+        bool isClosedByUser();
 
         /// false pauses the watchdog, e.g. during an update. A running player is not stopped.
         void setActivity(bool is_active);
@@ -111,6 +121,15 @@ class Watchdog
         std::chrono::steady_clock::time_point next_start_; // backoff: no start before this time
         int crash_count_     = 0;                          // crashes in a row
         bool player_missing_ = false;                      // last start ended with 127, see above
+
+        enum class Closing
+        {
+            none,    // an end is a crash
+            restart, // announced, start again at once
+            stay     // announced by the user, do not start again
+        };
+        Closing closing_      = Closing::none;
+        bool closed_by_user_ = false;
 
         // The following methods expect that mtx is locked
         void start();

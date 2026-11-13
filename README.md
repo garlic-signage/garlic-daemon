@@ -150,6 +150,10 @@ e.g. only warnings and errors: `journalctl -u garlic-daemon -p warning`
 | `Client connected.` / `Client disconnected.` | player (or another client) connected to the socket |
 | `Rejected connection from uid …` | a user other than `Player.user` or root tried to connect |
 | `Unknown message …, ignored.` | a client sent a message the daemon does not know, see [docs/player-api.md](docs/player-api.md) |
+| `Hello from garlic-player … (player)` | a player connected with protocol 1 |
+| `The player is closing: …` | protocol 1: the player announced its end; after `user` it is not started again |
+| `… was closed by the user, it is not started again until the daemon restarts.` | the player ended after `closing` with `user` |
+| `The player answered with an error: …` | protocol 1: the player refused a request of the daemon |
 | `Cannot read config file …` | the config file does not exist or is not readable, the daemon ends |
 | `Config file …:… - …` | syntax error in the config file (file, line, error), the daemon ends |
 | `Config value … has the wrong type` | e.g. `heartbeat_timeout = "60"` instead of `60`, the daemon ends |
@@ -255,7 +259,8 @@ As normal user the daemon does not reboot and cannot mount USB sticks, it logs a
 ## Player API
 
 The player talks to the daemon over the Unix socket `/run/garlic-daemon/garlic-daemon.sock`,
-one message per line, e.g. `heartbeat` or `reboot`.
+one message per line: protocol 1 (JSON-RPC 2.0, start the player with `--supervisor <socket>`) or the text protocol
+of before, e.g. `heartbeat` or `reboot`.
 Everything the player needs (connection, messages, heartbeat, signals, USB paths, Qt example)
 is described in [docs/player-api.md](docs/player-api.md).
 

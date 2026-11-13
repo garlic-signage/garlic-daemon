@@ -8,6 +8,7 @@ add_executable(garlic-tests
     test_local_socket_server.cpp
     test_log.cpp
     test_message_dispatcher.cpp
+    test_player_protocol.cpp
     test_usb_content_handler.cpp
     test_usb_monitor.cpp
     test_watchdog.cpp)

@@ -39,6 +39,7 @@ class DaemonTest : public ::testing::Test
         Watchdog watchdog{configuration, system_actions};
         MessageDispatcher dispatcher{system_actions, watchdog};
         LocalSocketServer socket_server{socketPath(), getuid()};
+        PlayerProtocol protocol{socket_server, dispatcher, system_actions, watchdog, 0, "test"};
         FakeUsbActions usb_actions;
         UsbContentHandler usb_content_handler{configuration, usb_actions};
         UsbMonitor usb_monitor{configuration, system_actions, usb_content_handler};
@@ -77,7 +78,7 @@ class DaemonTest : public ::testing::Test
 
 TEST_F(DaemonTest, ReceivedMessageIsDispatched)
 {
-    Daemon daemon(watchdog, socket_server, dispatcher, usb_monitor);
+    Daemon daemon(watchdog, socket_server, protocol, usb_monitor);
     daemon.start();
 
     send("reboot");
@@ -85,9 +86,29 @@ TEST_F(DaemonTest, ReceivedMessageIsDispatched)
     EXPECT_TRUE(waitForRebootCalls(1));
 }
 
+TEST_F(DaemonTest, ProtocolOneRebootIsDispatched)
+{
+    Daemon daemon(watchdog, socket_server, protocol, usb_monitor);
+    daemon.start();
+
+    int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    sockaddr_un address{};
+    address.sun_family = AF_UNIX;
+    std::strcpy(address.sun_path, socketPath().c_str());
+    ASSERT_EQ(connect(fd, reinterpret_cast<sockaddr *>(&address), sizeof(address)), 0) << strerror(errno);
+    std::string lines = R"({"jsonrpc":"2.0","id":1,"method":"hello","params":{"protocol":1,"client":"player"}})"
+                        "\n"
+                        R"({"jsonrpc":"2.0","id":2,"method":"reboot","params":{"task_id":"t-1"}})"
+                        "\n";
+    ASSERT_EQ(write(fd, lines.data(), lines.size()), static_cast<ssize_t>(lines.size()));
+
+    EXPECT_TRUE(waitForRebootCalls(1));
+    close(fd);
+}
+
 TEST_F(DaemonTest, SeveralMessagesAreDispatched)
 {
-    Daemon daemon(watchdog, socket_server, dispatcher, usb_monitor);
+    Daemon daemon(watchdog, socket_server, protocol, usb_monitor);
     daemon.start();
 
     send("reboot");
@@ -99,7 +120,7 @@ TEST_F(DaemonTest, SeveralMessagesAreDispatched)
 
 TEST_F(DaemonTest, NoMessagesAreDispatchedAfterStop)
 {
-    Daemon daemon(watchdog, socket_server, dispatcher, usb_monitor);
+    Daemon daemon(watchdog, socket_server, protocol, usb_monitor);
     daemon.start();
     daemon.stop();
 
@@ -113,7 +134,7 @@ TEST_F(DaemonTest, StopEndsAllThreadsQuickly)
 {
     auto begin = std::chrono::steady_clock::now();
     {
-        Daemon daemon(watchdog, socket_server, dispatcher, usb_monitor);
+        Daemon daemon(watchdog, socket_server, protocol, usb_monitor);
         daemon.start();
         std::this_thread::sleep_for(50ms); // the watchdog thread is now waiting for its next check
         daemon.stop();
@@ -125,7 +146,7 @@ TEST_F(DaemonTest, StopEndsAllThreadsQuickly)
 
 TEST_F(DaemonTest, StopWithoutStartIsHarmless)
 {
-    Daemon daemon(watchdog, socket_server, dispatcher, usb_monitor);
+    Daemon daemon(watchdog, socket_server, protocol, usb_monitor);
     daemon.stop();
     daemon.stop();
 }
@@ -137,7 +158,7 @@ TEST_F(DaemonTest, SighupReloadsAndSigtermStops)
     pthread_sigmask(SIG_SETMASK, nullptr, &old_mask);
     Daemon::blockSignals();
 
-    Daemon daemon(watchdog, socket_server, dispatcher, usb_monitor);
+    Daemon daemon(watchdog, socket_server, protocol, usb_monitor);
     daemon.start();
 
     // raise() sends the signal to this thread, where it stays pending until sigwait() takes it
